@@ -1,13 +1,16 @@
+require("dotenv").config();
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("./models/userModel");
+const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
 
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.CLIENT_ID,
       clientSecret: process.env.CLIENT_SECRET,
-      callbackURL: "/auth/google/callback",
+      callbackURL: '${process.env.BASE_URL}/auth/google/callback',
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
