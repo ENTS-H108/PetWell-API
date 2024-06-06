@@ -30,7 +30,7 @@ exports.signup = async (req, res) => {
         message: "Email sudah digunakan.",
       });
     }
-    
+
     // Hash password menggunakan bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -41,7 +41,7 @@ exports.signup = async (req, res) => {
       username: username,
       password: hashedPassword,
     }).save();
-    
+
     // Generate token verifikasi dengan user ID
     const verificationToken = user.generateVerificationToken();
 
@@ -178,8 +178,7 @@ exports.forgotPassword = async (req, res) => {
 
 // Fungsi untuk reset password
 exports.resetPassword = async (req, res) => {
-  const { token } = req.params;
-  const { newPassword } = req.body;
+  const { newPassword, token } = req.body;
   if (!token || !newPassword) {
     return res.status(422).send({ message: "Token dan password baru diperlukan" });
   }
