@@ -94,7 +94,7 @@ exports.login = async (req, res) => {
     // Cek apakah password sesuai
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
-      const token = jwt.sign({ id: user._id, }, process.env.JWT_KEY, { expiresIn: "1h" });
+      const token = jwt.sign({ id: user._id, }, process.env.JWT_KEY, { expiresIn: "5m" });
       console.log("Login berhasil untuk pengguna:", email);
       return res.status(200).json({
         message: "Login Berhasil",
@@ -214,6 +214,21 @@ exports.resetPassword = async (req, res) => {
 
 // Endpoint untuk signup dengan Google OAuth2
 exports.googleSignup = (req, res) => {
-  const user = req.user;
-  res.status(200).json({ message: "Signup successful", user });
+
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: '5m' });
+    res.status(200).json({
+      message: "Signup successful",
+      user,
+      token, 
+    });
+  } catch (err) {
+    console.error("Error during Google signup:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
