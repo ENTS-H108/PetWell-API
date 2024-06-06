@@ -1,4 +1,6 @@
 const express = require("express");
+const session = require("express-session");
+const passport = require("./passport");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
@@ -26,8 +28,11 @@ app.use(cors());
 app.use(limiter); // Terapkan rate limiter untuk semua rute
 app.use(helmet());
 app.use(express.json());
-//diambil dari index.js
-app.use(allRoutes);
+// Mengkonfigurasi session untuk mengelola sesi pengguna
+app.use(session({ secret: "secret", resave: false, saveUninitialized: false }));
+app.use(passport.initialize());
+
+app.use(allRoutes); //diambil dari index.js
 
 app.listen(PORT, () => {
   console.log("Server berjalan pada port: " + PORT);
