@@ -15,5 +15,8 @@ router.post("/forgot-password", validate.validateForgot,  UserController.forgotP
 router.post("/reset-password", validate.validateReset, UserController.resetPassword);
 router.get("/verify/:token", UserController.verify);
 
+// router add pet
+router.post("/add-pet", authenticateJWT, validateRequest, PetController.addPet);
+
 
 module.exports = router;
