@@ -1,5 +1,7 @@
 const express = require("express");
+const passport = require("passport");
 const router = express.Router();
+
 const UserController = require("../controllers/userController");
 const ArticleController = require("../controllers/articleController");
 const PetController = require("../controllers/petController");
@@ -28,5 +30,16 @@ router.get("/pets", authenticateJWT, PetController.getPets);
 router.get("/pets/:id", authenticateJWT, PetController.getPetById);
 router.put("/pets/:id", authenticateJWT, PetController.updatePet);
 router.delete("/pets/:id", authenticateJWT, PetController.deletePet);
+
+// Route untuk memulai proses OAuth2
+router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.get("/auth/google/callback", passport.authenticate("google", { failureRedirect: "/login" }),
+(req, res) => {
+    res.redirect("/dashboard"); 
+    }
+);
+router.get("/auth/google/signup", passport.authenticate("google"));
+router.get("/auth/google/signup/callback", passport.authenticate("google",
+     { failureRedirect: "/login" }), UserController.googleSignup);
 
 module.exports = router;
