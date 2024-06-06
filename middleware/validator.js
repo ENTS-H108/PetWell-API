@@ -6,7 +6,7 @@ const validateSignup = [body("username").not().isEmpty().trim().escape(), body("
 
 const validateForgot = [body("email").not().isEmpty().trim().escape()];
 
-const validateReset =  [body("token").not().isEmpty().trim().escape(), body("newPassword").not().isEmpty().trim().escape()];
+const validateReset = [body("newPassword").not().isEmpty().trim().escape(), body("token").not().isEmpty().trim().escape()];
 
 module.exports = {
   validateLogin,
