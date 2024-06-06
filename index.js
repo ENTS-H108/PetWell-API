@@ -11,14 +11,14 @@ const db = require("./config/db");
 const allRoutes = require("./routers/inRoute");
 
 db.then(() => {
-  console.log("Berhasil Connect Ke MongoDB");
+  console.log("Sukses melakukan koneksi ke MongoDB");
 }).catch(() => {
-  console.log("gagal konek ke mongoDB");
+  console.log("Gagal melakukan koneksi ke MongoDB");
 });
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 100, // batasi setiap IP hingga 100 permintaan per windowMs
+  max: 250, // batasi setiap IP hingga 250 permintaan per windowMs
   message: "Terlalu banyak permintaan dari IP ini, coba lagi nanti.",
 });
 
@@ -30,5 +30,5 @@ app.use(express.json());
 app.use(allRoutes);
 
 app.listen(PORT, () => {
-  console.log("server running on port " + PORT);
+  console.log("Server berjalan pada port: " + PORT);
 });
