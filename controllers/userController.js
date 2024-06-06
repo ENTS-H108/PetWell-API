@@ -211,3 +211,9 @@ exports.resetPassword = async (req, res) => {
     return res.status(500).send(err);
   }
 };
+
+// Endpoint untuk signup dengan Google OAuth2
+exports.googleSignup = (req, res) => {
+  const user = req.user;
+  res.status(200).json({ message: "Signup successful", user });
+};
