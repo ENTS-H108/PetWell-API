@@ -49,8 +49,10 @@ exports.signup = async (req, res) => {
     }).save();
     // Step 2 - Generate a verification token with the user's ID
     const verificationToken = user.generateVerificationToken();
+
     // Step 3 - Email the user a unique verification link
     const url = `http://localhost:3000/verify/${verificationToken}`;
+
     transporter.sendMail({
       to: email,
       subject: "Verify Account",
@@ -164,7 +166,8 @@ exports.forgotPassword = async (req, res) => {
     // Membuat token reset password menggunakan JWT
     const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "1h" });
 
-    // const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+    // Construct reset URL using environment variable
+    const resetUrl = `https://www.entsh108.com/forgotPassword/${resetToken}`;
 
     transporter.sendMail({
       to: email,
@@ -180,7 +183,7 @@ exports.forgotPassword = async (req, res) => {
 
 // Fungsi untuk menghandle reset password
 exports.resetPassword = async (req, res) => {
-  const { token } = req.body;
+  const { token } = req.params;
   const { newPassword } = req.body;
   if (!token || !newPassword) {
     return res.status(422).send({ message: "Token and new password are required" });
