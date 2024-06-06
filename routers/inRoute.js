@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const UserController = require("../controllers/userController.js");
 const ArticleController = require("../controllers/articleController.js");
+const PetController = require("../controllers/petController.js");
 
 const validate = require("../middleware/validator");
 const validateRequest = require("../middleware/validateRequest");
@@ -20,5 +21,8 @@ router.get("/article", ArticleController.getArticle);
 router.get("/article/:id", ArticleController.getArticleById);
 router.put("/article/:id", ArticleController.updateArticle);
 router.delete("/article/:id", ArticleController.deleteArticle);
+
+// router add pet
+router.post("/add-pet", authenticateJWT, validateRequest, PetController.addPet);
 
 module.exports = router;
