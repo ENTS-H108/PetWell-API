@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const UserController = require("../controllers/userController.js");
-const ArticleController = require("../controllers/articleController.js");
-const PetController = require("../controllers/petController.js");
+const UserController = require("../controllers/userController");
+const ArticleController = require("../controllers/articleController");
+const PetController = require("../controllers/petController");
 
 const validate = require("../middleware/validator");
 const validateRequest = require("../middleware/validateRequest");
-const authenticateJWT = require("../middleware/authenticateJWT.js");
+const authenticateJWT = require("../middleware/authenticateJWT");
 
 // router login dan regis
 router.post("/signup", validate.validateSignup, validateRequest, UserController.signup);
@@ -16,13 +16,17 @@ router.post("/reset-password", validate.validateReset, UserController.resetPassw
 router.get("/verify/:token", UserController.verify);
 
 // router fitur artikel
-router.post("/article", ArticleController.createArticle);
-router.get("/article", ArticleController.getArticle);
-router.get("/article/:id", ArticleController.getArticleById);
-router.put("/article/:id", ArticleController.updateArticle);
-router.delete("/article/:id", ArticleController.deleteArticle);
+router.post("/articles", authenticateJWT, ArticleController.createArticle);
+router.get("/articles", authenticateJWT, ArticleController.getArticles);
+router.get("/articles/:id", authenticateJWT, ArticleController.getArticleById);
+router.put("/articles/:id", authenticateJWT, ArticleController.updateArticle);
+router.delete("/articles/:id", authenticateJWT, ArticleController.deleteArticle);
 
-// router add pet
-router.post("/add-pet", authenticateJWT, validateRequest, PetController.addPet);
+// router fitur pet
+router.post("/pets", authenticateJWT, validateRequest, PetController.createPet);
+router.get("/pets", authenticateJWT, PetController.getPets);
+router.get("/pets/:id", authenticateJWT, PetController.getPetById);
+router.put("/pets/:id", authenticateJWT, PetController.updatePet);
+router.delete("/pets/:id", authenticateJWT, PetController.deletePet);
 
 module.exports = router;
