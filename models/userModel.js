@@ -2,10 +2,20 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const UserSchema = mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
-  email: String,
-  username: String,
-  password: String,
-  
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
   verified: {
     type: Boolean,
     required: true,
