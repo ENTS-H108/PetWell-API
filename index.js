@@ -18,7 +18,7 @@ db.then(() => {
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 100, // batasi setiap IP hingga 100 permintaan per windowMs
+  max: 250, // batasi setiap IP hingga 250 permintaan per windowMs
   message: "Terlalu banyak permintaan dari IP ini, coba lagi nanti.",
 });
 

@@ -18,113 +18,108 @@ exports.signup = async (req, res) => {
   const { email, username, password } = req.body;
   if (!email || !username || !password) {
     return res.status(422).send({
-      message: "data tidak lengkap",
+      message: "Data tidak lengkap",
     });
   }
 
   try {
-    // Check if the email is in use
+    // Memeriksa apakah email sudah digunakan
     const existingEmail = await User.findOne({ email }).exec();
     if (existingEmail) {
       return res.status(409).send({
-        message: "Email is already in use.",
+        message: "Email sudah digunakan.",
       });
     }
     
-    // Periksa apakah nama pengguna sudah ada di database
-    // const existingUsername = await User.findOne({ username });
-    // if (existingUsername) {
-    //   return res.status(400).json({ message: "Username already exists" });
-    // }
-
     // Hash password menggunakan bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Step 1 - Create and save the user
+    // Membuat dan menyimpan user
     const user = await new User({
       _id: new mongoose.Types.ObjectId(),
       email: email,
       username: username,
       password: hashedPassword,
     }).save();
-    // Step 2 - Generate a verification token with the user's ID
+    
+    // Generate token verifikasi dengan user ID
     const verificationToken = user.generateVerificationToken();
 
-    // Step 3 - Email the user a unique verification link
-    const url = `http://localhost:3000/verify/${verificationToken}`;
+    // Email ke user link verifikasi (unik)
+    const url = `${process.env.BASE_URL}/verify/${verificationToken}`;
 
     transporter.sendMail({
       to: email,
-      subject: "Verify Account",
-      html: `Click <a href = '${url}'>here</a> to confirm your email.`,
+      subject: "Verifikasi Akun",
+      html: `Klik <a href = '${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
     });
     return res.status(201).send({
-      message: `Sent a verification email to ${email}`,
+      message: `Email verifikasi telah dikirim ke ${email}`,
     });
   } catch (err) {
     return res.status(500).send(err);
   }
 };
 
-// fungsi login
+// Fungsi login
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  console.log("Login attempt:", { email, password });
+  console.log("Percobaan login:", { email, password });
 
-  // Check we have a email and password
-  if (!email || !password) {
+  // Cek kelengkapan email dan password
+  if (!email && !password) {
     return res.status(422).send({
       message: "Data tidak lengkap",
     });
   }
 
   try {
-    // Step 1 - Verify a user with the email exists
+    // Cek apakah pengguna ditemukan
     const user = await User.findOne({ email }).exec();
     if (!user) {
-      console.log("User not found:", email);
+      console.log("Pengguna tidak ditemukan:", email);
       return res.status(404).send({
         error: "Email atau Password salah",
       });
     }
 
-    // Step 2 - Ensure the account has been verified
+    // Cek apakah akun telah terverifikasi
     if (!user.verified) {
-      console.log("Account not verified:", email);
+      console.log("Akun belum diverifikasi:", email);
       return res.status(403).send({
-        message: "Verify your Account.",
+        message: "Verifikasi akun Anda.",
       });
     }
 
-    // Step 3 - Check if the password matches
+    // Cek apakah password sesuai
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
       const token = jwt.sign({ id: user._id, }, process.env.JWT_KEY, { expiresIn: "1h" });
-      console.log("Login successful for user:", email);
+      console.log("Login berhasil untuk pengguna:", email);
       return res.status(200).json({
-        message: "Login Successfully",
+        message: "Login Berhasil",
         token,
       });
     } else {
-      console.log("Incorrect password for user:", email);
+      console.log("Password salah untuk pengguna:", email);
       return res.status(401).json({ error: "Email atau Password salah" });
     }
   } catch (err) {
     console.error("Internal server error during login:", err);
-    return res.status(500).send({ message: "Internal Server Error", error: err });
+    return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
   }
 };
 
-// fungsi verify email
+// Fungsi verifikasi email
 exports.verify = async (req, res) => {
   const { token } = req.params;
-  // Check we have an id
+  // Cek token
   if (!token) {
     return res.status(422).send({
       message: "Missing Token",
     });
   }
-  // Step 1 -  Verify the token from the URL
+  // Verifikasi token dari URL
   let payload = null;
   try {
     payload = jwt.verify(token, process.env.USER_VERIFICATION_TOKEN_SECRET);
@@ -132,18 +127,18 @@ exports.verify = async (req, res) => {
     return res.status(500).send(err);
   }
   try {
-    // Step 2 - Find user with matching ID
+    // Cari user dengan ID yang sesuai
     const user = await User.findOne({ _id: payload.ID }).exec();
     if (!user) {
       return res.status(404).send({
-        message: "User does not  exists",
+        message: "Pengguna tidak ditemukan",
       });
     }
-    // Step 3 - Update user verification status to true
+    // Update status verifikasi user menjadi true
     user.verified = true;
     await user.save();
     return res.status(200).send({
-      message: "Account Verified",
+      message: "Akun berhasil diverifikasi",
     });
   } catch (err) {
     return res.status(500).send(err);
@@ -154,25 +149,25 @@ exports.verify = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
   if (!email) {
-    return res.status(422).send({ message: "Email is required" });
+    return res.status(422).send({ message: "Email diperlukan" });
   }
 
   try {
     const user = await User.findOne({ email }).exec();
     if (!user) {
-      return res.status(404).send({ message: "Email not found" });
+      return res.status(404).send({ message: "Email tidak ditemukan" });
     }
 
     // Membuat token reset password menggunakan JWT
     const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "1h" });
 
-    // Construct reset URL using environment variable
+    // Membuat reset URL dengan environment variable
     const resetUrl = `https://www.entsh108.com/forgotPassword/${resetToken}`;
 
     transporter.sendMail({
       to: email,
-      subject: "Password Reset",
-      html: `ini adalah token reset password anda: ${ resetToken } `
+      subject: "Reset Password",
+      html: `Klik <a href='${resetUrl}'>di sini</a> untuk reset password. Link ini hanya berlaku untuk 5 menit ke depan.`
     });
 
     return res.status(200).send({ message: `Sent a password reset email to ${email}` });
@@ -181,12 +176,12 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// Fungsi untuk menghandle reset password
+// Fungsi untuk reset password
 exports.resetPassword = async (req, res) => {
   const { token } = req.params;
   const { newPassword } = req.body;
   if (!token || !newPassword) {
-    return res.status(422).send({ message: "Token and new password are required" });
+    return res.status(422).send({ message: "Token dan password baru diperlukan" });
   }
 
   try {
@@ -195,13 +190,13 @@ exports.resetPassword = async (req, res) => {
     try {
       payload = jwt.verify(token, process.env.USER_VERIFICATION_TOKEN_SECRET);
     } catch (err) {
-      return res.status(500).send({ message: "Invalid or expired token" });
+      return res.status(500).send({ message: "Token tidak valid atau telah kadaluarsa" });
     }
 
     // Temukan pengguna berdasarkan ID yang ada di payload
     const user = await User.findOne({ _id: payload.ID }).exec();
     if (!user) {
-      return res.status(404).send({ message: "User does not exist" });
+      return res.status(404).send({ message: "Pengguna tidak ditemukan" });
     }
 
     // Hashing password baru
@@ -211,7 +206,7 @@ exports.resetPassword = async (req, res) => {
     user.password = hashedPassword;
     await user.save();
 
-    return res.status(200).send({ message: "Password has been reset successfully" });
+    return res.status(200).send({ message: "Password berhasil direset" });
   } catch (err) {
     return res.status(500).send(err);
   }
