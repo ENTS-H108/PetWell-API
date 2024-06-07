@@ -31,15 +31,4 @@ router.get("/pets/:id", authenticateJWT, PetController.getPetById);
 router.put("/pets/:id", authenticateJWT, PetController.updatePet);
 router.delete("/pets/:id", authenticateJWT, PetController.deletePet);
 
-// Route untuk memulai proses OAuth2
-router.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-router.get("/auth/google/callback", passport.authenticate("google", { failureRedirect: "/login" }),
-(req, res) => {
-    res.redirect("/dashboard"); 
-    }
-);
-router.get("/auth/google/signup", passport.authenticate("google"));
-router.get("/auth/google/signup/callback", passport.authenticate("google",
-     { failureRedirect: "/login" }), UserController.googleSignup);
-
 module.exports = router;
