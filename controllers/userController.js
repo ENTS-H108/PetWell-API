@@ -4,6 +4,7 @@ const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel.js");
 const bcrypt = require("bcrypt");
+const Blacklist = require('../models/blacklistModel.js');
 
 const transporter = nodemailer.createTransport({
   service: "Gmail",
@@ -67,7 +68,7 @@ exports.login = async (req, res) => {
   console.log("Percobaan login:", { email, password });
 
   // Cek kelengkapan email dan password
-  if (!email && !password) {
+  if (!email || !password) {
     return res.status(422).send({
       message: "Data tidak lengkap",
     });
@@ -94,7 +95,13 @@ exports.login = async (req, res) => {
     // Cek apakah password sesuai
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
-      const token = jwt.sign({ id: user._id, }, process.env.JWT_KEY, { expiresIn: "5m" });
+      // Blacklist token sebelumnya
+      if (req.headers.authorization) {
+        const previousToken = req.headers.authorization.split(' ')[1];
+        await Blacklist.create({ token: previousToken });
+      }
+
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY);
       console.log("Login berhasil untuk pengguna:", email);
       return res.status(200).json({
         message: "Login Berhasil",
@@ -159,7 +166,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // Membuat token reset password menggunakan JWT
-    const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "1h" });
+    const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "5m" });
 
     // Membuat reset URL dengan environment variable
     const resetUrl = `https://www.entsh108.com/forgotPassword/${resetToken}`;
