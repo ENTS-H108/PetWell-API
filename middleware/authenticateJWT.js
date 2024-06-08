@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 const Blacklist = require("../models/blacklistModel.js");
 
-function authenticateJWT(req, res, next) {
+const authenticateJWT = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
 
