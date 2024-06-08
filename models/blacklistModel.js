@@ -5,7 +5,7 @@ const blacklistSchema = new mongoose.Schema({
     type: String,
     required: true,
     },
-  createdAt: { type: Date, default: Date.now, expires: '30d' } // Token akan otomatis dihapus setelah 1 jam
+  createdAt: { type: Date, default: Date.now, expires: '30d' } // Token akan otomatis dihapus setelah 30 hari
 });
 
 const Blacklist = mongoose.model("Blacklist", blacklistSchema);

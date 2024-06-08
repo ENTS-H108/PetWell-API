@@ -94,7 +94,7 @@ exports.login = async (req, res) => {
       }
 
       // Create a new token
-      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY);
 
       // Save the new session
       await Session.create({ userId: user._id, token });
