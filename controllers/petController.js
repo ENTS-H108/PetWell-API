@@ -2,18 +2,18 @@ const Pet = require("../models/petModel");
 
 exports.createPet = async (req, res) => {
   try {
-    const { name, species, age } = req.body;
+    const { name, species, age, thumbnail = null } = req.body; // Menambahkan thumbnail ke dalam body request
     const owner = req.user.id; // Mengambil ID pengguna dari token JWT yang telah diverifikasi
 
     // Validasi spesies hewan peliharaan
-    if (!["anjing", "kucing"].includes(species)) {
+    if (!["anjing", "kucing", "Anjing", "Kucing"].includes(species)) {
       return res.status(400).json({
         error: true,
         message: "Gagal menambahkan hewan peliharaan, spesies hanya bisa anjing atau kucing",
       });
     }
 
-    const pet = await Pet.create({ name, species, age, owner });
+    const pet = await Pet.create({ name, species, age, owner, thumbnail });
     console.log("Hewan peliharaan berhasil ditambahkan:", pet);
     
     const { __v, ...petData } = pet.toObject();
@@ -24,12 +24,11 @@ exports.createPet = async (req, res) => {
   }
 };
 
-
 exports.getPets = async (req, res) => {
   try {
     const owner = req.user.id; // Mengambil ID pengguna dari token JWT yang telah diverifikasi
 
-    const pets = await Pet.find({ owner });
+    const pets = await Pet.find({ owner }).select('-__v');
 
     // Memeriksa apakah pengguna memiliki hewan peliharaan atau tidak
     if (pets.length === 0) {
@@ -49,7 +48,6 @@ exports.getPets = async (req, res) => {
   }
 };
 
-
 exports.getPetById = async (req, res) => {
   try {
     const pet = await Pet.findOne({ _id: req.params.id, owner: req.user.id }).select('-timestamp -__v');
@@ -64,8 +62,21 @@ exports.getPetById = async (req, res) => {
 
 exports.updatePet = async (req, res) => {
   try {
-    const { name, species, age } = req.body;
-    const pet = await Pet.findOneAndUpdate({ _id: req.params.id, owner: req.user.id }, { name, species, age }, { new: true });
+    const { name, species, age, thumbnail = null } = req.body;
+
+    // Validasi spesies hewan peliharaan
+    if (species && !["anjing", "kucing", "Anjing", "Kucing"].includes(species)) {
+      return res.status(400).json({
+        error: true,
+        message: "Gagal memperbarui hewan peliharaan, spesies hanya bisa anjing atau kucing",
+      });
+    }
+
+    const pet = await Pet.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user.id },
+      { name, species, age, thumbnail },
+      { new: true }
+    ).select('-__v');
     if (!pet) {
       return res.status(404).json({ message: "Hewan peliharaan tidak ditemukan" });
     }
