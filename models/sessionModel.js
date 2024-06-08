@@ -13,7 +13,7 @@ const sessionSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 3600, // optional, to automatically delete sessions after 1 hour
+    expires: 2592000, // otomatis menghapus setelah 1 bulan (30 hari)
   },
 });
 
