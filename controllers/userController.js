@@ -67,7 +67,7 @@ exports.login = async (req, res) => {
   console.log("Percobaan login:", { email, password });
 
   // Cek kelengkapan email dan password
-  if (!email && !password) {
+  if (!email || !password) {
     return res.status(422).send({
       message: "Data tidak lengkap",
     });
@@ -94,18 +94,19 @@ exports.login = async (req, res) => {
     // Cek apakah password sesuai
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
-      const token = jwt.sign({ id: user._id, }, process.env.JWT_KEY, { expiresIn: "5m" });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
       console.log("Login berhasil untuk pengguna:", email);
       return res.status(200).json({
         message: "Login Berhasil",
         token,
+        username: user.username,
       });
     } else {
       console.log("Password salah untuk pengguna:", email);
       return res.status(401).json({ error: "Email atau Password salah" });
     }
   } catch (err) {
-    console.error("Internal server error during login:", err);
+    console.error("Kesalahan server internal selama login:", err);
     return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
   }
 };
@@ -116,7 +117,7 @@ exports.verify = async (req, res) => {
   // Cek token
   if (!token) {
     return res.status(422).send({
-      message: "Missing Token",
+      message: "Token tidak ditemukan",
     });
   }
   // Verifikasi token dari URL
@@ -159,7 +160,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // Membuat token reset password menggunakan JWT
-    const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "1h" });
+    const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "5m" });
 
     // Membuat reset URL dengan environment variable
     const resetUrl = `https://www.entsh108.com/forgotPassword/${resetToken}`;
