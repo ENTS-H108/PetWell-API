@@ -4,7 +4,6 @@ const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel.js");
 const bcrypt = require("bcrypt");
-const Blacklist = require('../models/blacklistModel.js');
 
 const transporter = nodemailer.createTransport({
   service: "Gmail",
@@ -95,24 +94,19 @@ exports.login = async (req, res) => {
     // Cek apakah password sesuai
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
-      // Blacklist token sebelumnya
-      if (req.headers.authorization) {
-        const previousToken = req.headers.authorization.split(' ')[1];
-        await Blacklist.create({ token: previousToken });
-      }
-
-      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY);
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
       console.log("Login berhasil untuk pengguna:", email);
       return res.status(200).json({
         message: "Login Berhasil",
         token,
+        username: user.username,
       });
     } else {
       console.log("Password salah untuk pengguna:", email);
       return res.status(401).json({ error: "Email atau Password salah" });
     }
   } catch (err) {
-    console.error("Internal server error during login:", err);
+    console.error("Kesalahan server internal selama login:", err);
     return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
   }
 };
@@ -123,7 +117,7 @@ exports.verify = async (req, res) => {
   // Cek token
   if (!token) {
     return res.status(422).send({
-      message: "Missing Token",
+      message: "Token tidak ditemukan",
     });
   }
   // Verifikasi token dari URL
