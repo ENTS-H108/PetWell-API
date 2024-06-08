@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel.js");
 const bcrypt = require("bcrypt");
 const Blacklist = require('../models/blacklistModel.js');
+const Session = require("../models/sessionModel.js");
 
 const transporter = nodemailer.createTransport({
   service: "Gmail",
@@ -67,46 +68,39 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
   console.log("Percobaan login:", { email, password });
 
-  // Cek kelengkapan email dan password
   if (!email || !password) {
-    return res.status(422).send({
-      message: "Data tidak lengkap",
-    });
+    return res.status(422).send({ message: "Data tidak lengkap" });
   }
 
   try {
-    // Cek apakah pengguna ditemukan
     const user = await User.findOne({ email }).exec();
     if (!user) {
       console.log("Pengguna tidak ditemukan:", email);
-      return res.status(404).send({
-        error: "Email atau Password salah",
-      });
+      return res.status(404).send({ error: "Email atau Password salah" });
     }
 
-    // Cek apakah akun telah terverifikasi
     if (!user.verified) {
       console.log("Akun belum diverifikasi:", email);
-      return res.status(403).send({
-        message: "Verifikasi akun Anda.",
-      });
+      return res.status(403).send({ message: "Verifikasi akun Anda." });
     }
 
-    // Cek apakah password sesuai
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
-      // Blacklist token sebelumnya
-      if (req.headers.authorization) {
-        const previousToken = req.headers.authorization.split(' ')[1];
-        await Blacklist.create({ token: previousToken });
+      // Blacklist the previous token if it exists
+      const previousSession = await Session.findOne({ userId: user._id }).exec();
+      if (previousSession) {
+        await Blacklist.create({ token: previousSession.token });
+        await Session.deleteOne({ _id: previousSession._id });
       }
 
-      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY);
+      // Create a new token
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
+
+      // Save the new session
+      await Session.create({ userId: user._id, token });
+
       console.log("Login berhasil untuk pengguna:", email);
-      return res.status(200).json({
-        message: "Login Berhasil",
-        token,
-      });
+      return res.status(200).json({ message: "Login Berhasil", token });
     } else {
       console.log("Password salah untuk pengguna:", email);
       return res.status(401).json({ error: "Email atau Password salah" });
