@@ -7,7 +7,9 @@ const authenticateJWT = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (token == null) return res.sendStatus(401); // No token provided
+  if (!token) {
+    return res.status(401).send({ message: "Token tidak tersedia" });
+  }
 
   try {
     const blacklisted = await Blacklist.findOne({ token }).exec();

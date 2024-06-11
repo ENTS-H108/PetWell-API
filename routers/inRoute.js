@@ -30,4 +30,8 @@ router.get("/pets/:id", authenticateJWT, PetController.getPetById);
 router.put("/pets/:id", authenticateJWT, PetController.updatePet);
 router.delete("/pets/:id", authenticateJWT, PetController.deletePet);
 
+//router untuk profile
+router.get("/profile", authenticateJWT, UserController.getProfile);
+router.put("/profile", authenticateJWT, UserController.updateProfile);
+
 module.exports = router;

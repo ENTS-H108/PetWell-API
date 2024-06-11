@@ -15,9 +15,16 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// fungsi register
+// Fungsi register
 exports.signup = async (req, res) => {
   const { email, username, password } = req.body;
+
+  let provider = "google"; // Default provider adalah google
+
+  if (password) {
+    provider = "reguler"; // Jika ada password, provider diatur sebagai reguler
+  }
+
   if (!email || !username || !password) {
     return res.status(422).send({
       message: "Data tidak lengkap",
@@ -39,9 +46,10 @@ exports.signup = async (req, res) => {
     // Membuat dan menyimpan user
     const user = await new User({
       _id: new mongoose.Types.ObjectId(),
-      email: email,
-      username: username,
+      email,
+      username,
       password: hashedPassword,
+      provider,
     }).save();
 
     // Generate token verifikasi dengan user ID
@@ -53,7 +61,7 @@ exports.signup = async (req, res) => {
     transporter.sendMail({
       to: email,
       subject: "Verifikasi Akun",
-      html: `Klik <a href = '${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
+      html: `Klik <a href='${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
     });
     return res.status(201).send({
       message: `Email verifikasi telah dikirim ke ${email}`,
@@ -94,13 +102,22 @@ exports.login = async (req, res) => {
       }
 
       // Create a new token
-      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY);
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
 
       // Save the new session
       await Session.create({ userId: user._id, token });
 
       console.log("Login berhasil untuk pengguna:", email);
-      return res.status(200).json({ message: "Login Berhasil", token });
+      return res.status(200).json({
+        message: "Login Berhasil",
+        user: {
+          token,
+          provider: user.provider,
+          email: user.email,
+          username: user.username,
+          profilePict: user.profilePict || "",
+        }
+      });
     } else {
       console.log("Password salah untuk pengguna:", email);
       return res.status(401).json({ error: "Email atau Password salah" });
@@ -209,5 +226,54 @@ exports.resetPassword = async (req, res) => {
     return res.status(200).send({ message: "Password berhasil direset" });
   } catch (err) {
     return res.status(500).send(err);
+  }
+};
+
+// Fungsi untuk mendapatkan profil pengguna
+exports.getProfile = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const user = await User.findById(userId).select("email username profilePict").exec();
+    if (!user) {
+      return res.status(404).send({ message: "Pengguna tidak ditemukan" });
+    }
+
+    return res.status(200).json({
+      email: user.email,
+      username: user.username,
+      profilePict: user.profilePict,
+    });
+  } catch (err) {
+    return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
+  }
+};
+
+// Fungsi untuk mengupdate profil pengguna
+exports.updateProfile = async (req, res) => {
+  const userId = req.user.id; 
+  const { username, profilePict } = req.body;
+
+  try {
+    const user = await User.findById(userId).exec();
+    if (!user) {
+      return res.status(404).send({ message: "Pengguna tidak ditemukan" });
+    }
+
+    user.username = username || user.username;
+    user.profilePict = profilePict || user.profilePict;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Profil berhasil diperbarui",
+      user: {
+        email: user.email,
+        username: user.username,
+        profilePict: user.profilePict,
+      }
+    });
+  } catch (err) {
+    return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
   }
 };
