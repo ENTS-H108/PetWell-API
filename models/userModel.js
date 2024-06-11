@@ -15,6 +15,15 @@ const UserSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  profilePict: {
+    type: String,
+    default: null
+  },
+  provider: {
+    type: String,
+    enum: ["reguler", "google"],
+    default: "google",
+  },
   verified: {
     type: Boolean,
     required: true,
