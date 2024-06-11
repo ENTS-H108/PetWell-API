@@ -4,6 +4,8 @@ const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel.js");
 const bcrypt = require("bcrypt");
+const Blacklist = require('../models/blacklistModel.js');
+const Session = require("../models/sessionModel.js");
 
 const transporter = nodemailer.createTransport({
   service: "Gmail",
@@ -59,7 +61,7 @@ exports.signup = async (req, res) => {
     transporter.sendMail({
       to: email,
       subject: "Verifikasi Akun",
-      html: `Klik <a href = '${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
+      html: `Klik <a href='${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
     });
     return res.status(201).send({
       message: `Email verifikasi telah dikirim ke ${email}`,
@@ -74,46 +76,47 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
   console.log("Percobaan login:", { email, password });
 
-  // Cek kelengkapan email dan password
   if (!email || !password) {
-    return res.status(422).send({
-      message: "Data tidak lengkap",
-    });
+    return res.status(422).send({ message: "Data tidak lengkap" });
   }
 
   try {
-    // Cek apakah pengguna ditemukan
     const user = await User.findOne({ email }).exec();
     if (!user) {
       console.log("Pengguna tidak ditemukan:", email);
-      return res.status(404).send({
-        error: "Email atau Password salah",
-      });
+      return res.status(404).send({ error: "Email atau Password salah" });
     }
 
-    // Cek apakah akun telah terverifikasi
     if (!user.verified) {
       console.log("Akun belum diverifikasi:", email);
-      return res.status(403).send({
-        message: "Verifikasi akun Anda.",
-      });
+      return res.status(403).send({ message: "Verifikasi akun Anda." });
     }
 
-    // Cek apakah password sesuai
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
+      // Blacklist the previous token if it exists
+      const previousSession = await Session.findOne({ userId: user._id }).exec();
+      if (previousSession) {
+        await Blacklist.create({ token: previousSession.token });
+        await Session.deleteOne({ _id: previousSession._id });
+      }
+
+      // Create a new token
       const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
+
+      // Save the new session
+      await Session.create({ userId: user._id, token });
+
+      console.log("Login berhasil untuk pengguna:", email);
       return res.status(200).json({
         message: "Login Berhasil",
-        user: [
-          {
-            token,
-            provider: user.provider,
-            email: user.email,
-            username: user.username,
-            profilePict: user.profilePict || "",
-          }
-        ]
+        user: {
+          token,
+          provider: user.provider,
+          email: user.email,
+          username: user.username,
+          profilePict: user.profilePict || "",
+        }
       });
     } else {
       console.log("Password salah untuk pengguna:", email);
