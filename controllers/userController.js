@@ -17,57 +17,81 @@ const transporter = nodemailer.createTransport({
 
 // Fungsi register
 exports.signup = async (req, res) => {
-  const { email, username, password } = req.body;
+  const { username, email, password } = req.body;
 
-  let provider = "google"; // Default provider adalah google
+  let provider = "reguler";
 
-  if (password) {
-    provider = "reguler"; // Jika ada password, provider diatur sebagai reguler
-  }
-
-  if (!email || !username || !password) {
-    return res.status(422).send({
-      message: "Data tidak lengkap",
-    });
-  }
-
-  try {
-    // Memeriksa apakah email sudah digunakan
-    const existingEmail = await User.findOne({ email }).exec();
-    if (existingEmail) {
-      return res.status(409).send({
-        message: "Email sudah digunakan.",
+  if (password.length > 16) {
+    provider = "google";
+    try {
+      const existingUser = await User.findOne({ email }).exec();
+      if (!existingUser) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = new User({
+          _id: new mongoose.Types.ObjectId(),
+          email,
+          username,
+          password: hashedPassword,
+          provider,
+          verified: true,
+        });
+        await user.save();
+        return await exports.login({ body: { email, password } }, res);
+      } else {
+        existingUser.provider = "google";
+        await existingUser.save();
+        existingPassword = existingUser.password;
+        return await exports.login({ body: { email, password: existingPassword } }, res);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+  } else {
+    if (!email || !username || !password) {
+      return res.status(422).send({
+        message: "Data tidak lengkap register",
       });
     }
 
-    // Hash password menggunakan bcrypt
-    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+      // Memeriksa apakah email sudah digunakan
+      const existingEmail = await User.findOne({ email }).exec();
+      if (existingEmail) {
+        return res.status(409).send({
+          message: "Email sudah digunakan.",
+        });
+      }
 
-    // Membuat dan menyimpan user
-    const user = await new User({
-      _id: new mongoose.Types.ObjectId(),
-      email,
-      username,
-      password: hashedPassword,
-      provider,
-    }).save();
+      // Hash password menggunakan bcrypt
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate token verifikasi dengan user ID
-    const verificationToken = user.generateVerificationToken();
+      // Membuat dan menyimpan user
+      const user = await new User({
+        _id: new mongoose.Types.ObjectId(),
+        email,
+        username,
+        password: hashedPassword,
+        provider,
+      }).save();
 
-    // Email ke user link verifikasi (unik)
-    const url = `${process.env.BASE_URL}/verify/${verificationToken}`;
+      // Generate token verifikasi dengan user ID
+      const verificationToken = user.generateVerificationToken();
 
-    transporter.sendMail({
-      to: email,
-      subject: "Verifikasi Akun",
-      html: `Klik <a href='${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
-    });
-    return res.status(201).send({
-      message: `Email verifikasi telah dikirim ke ${email}`,
-    });
-  } catch (err) {
-    return res.status(500).send(err);
+      // Email ke user link verifikasi (unik)
+      const url = `${process.env.BASE_URL}/verify/${verificationToken}`;
+
+      transporter.sendMail({
+        to: email,
+        subject: "Verifikasi Akun",
+        html: `Klik <a href='${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
+      });
+      return res.status(201).send({
+        message: `Email verifikasi telah dikirim ke ${email}`,
+      });
+    } catch (err) {
+      return res.status(500).send(err);
+    }
   }
 };
 
@@ -75,57 +99,65 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   console.log("Percobaan login:", { email, password });
+  const user = await User.findOne({ email }).exec();
+  const passwordMatch = await bcrypt.compare(password, user.password);
 
-  if (!email || !password) {
-    return res.status(422).send({ message: "Data tidak lengkap" });
-  }
-
-  try {
-    const user = await User.findOne({ email }).exec();
-    if (!user) {
-      console.log("Pengguna tidak ditemukan:", email);
-      return res.status(404).send({ error: "Email atau Password salah" });
+  if ((user.provider == "google")) {
+    return await createNewSession(user, res);
+  } else {
+    if (!email || !password) {
+      return res.status(422).send({ message: "Data login tidak lengkap" });
     }
-
-    if (!user.verified) {
-      console.log("Akun belum diverifikasi:", email);
-      return res.status(403).send({ message: "Verifikasi akun Anda." });
-    }
-
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (passwordMatch) {
-      // Blacklist the previous token if it exists
-      const previousSession = await Session.findOne({ userId: user._id }).exec();
-      if (previousSession) {
-        await Blacklist.create({ token: previousSession.token });
-        await Session.deleteOne({ _id: previousSession._id });
+    try {
+      if (!user) {
+        console.log("Pengguna tidak ditemukan:", email);
+        return res.status(404).send({ error: "Pengguna tidak ditemukan" });
       }
 
-      // Create a new token
-      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
+      if (!user.verified) {
+        console.log("Akun belum diverifikasi:", email);
+        return res.status(403).send({ message: "Verifikasi akun Anda." });
+      }
 
-      // Save the new session
-      await Session.create({ userId: user._id, token });
-
-      console.log("Login berhasil untuk pengguna:", email);
-      return res.status(200).json({
-        message: "Login Berhasil",
-        user: {
-          token,
-          provider: user.provider,
-          email: user.email,
-          username: user.username,
-          profilePict: user.profilePict || "",
-        }
-      });
-    } else {
-      console.log("Password salah untuk pengguna:", email);
-      return res.status(401).json({ error: "Email atau Password salah" });
+      if (passwordMatch) {
+        return await createNewSession(user, res);
+      } else {
+        console.log("Password salah untuk pengguna:", email);
+        return res.status(401).json({ error: "Email atau Password salah" });
+      }
+    } catch (err) {
+      console.error("Kesalahan server internal selama login:", err);
+      return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
     }
-  } catch (err) {
-    console.error("Kesalahan server internal selama login:", err);
-    return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
   }
+};
+
+// Fungsi sesi dan blacklist
+const createNewSession = async (user, res) => {
+  // Blacklist the previous token if it exists
+  const previousSession = await Session.findOne({ userId: user._id }).exec();
+  if (previousSession) {
+    await Blacklist.create({ token: previousSession.token });
+    await Session.deleteOne({ _id: previousSession._id });
+  }
+
+  // Create a new token
+  const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
+
+  // Save the new session
+  await Session.create({ userId: user._id, token });
+
+  console.log("Login berhasil untuk pengguna:", user.email);
+  return res.status(200).json({
+    message: "Login Berhasil",
+    user: {
+      token,
+      provider: user.provider,
+      email: user.email,
+      username: user.username,
+      profilePict: user.profilePict || "",
+    }
+  });
 };
 
 // Fungsi verifikasi email
@@ -146,7 +178,7 @@ exports.verify = async (req, res) => {
   }
   try {
     // Cari user dengan ID yang sesuai
-    const user = await User.findOne({ _id: payload.ID }).exec();
+    const user = await User.findOne({ _id: payload.id }).exec();
     if (!user) {
       return res.status(404).send({
         message: "Pengguna tidak ditemukan",
@@ -177,7 +209,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // Membuat token reset password menggunakan JWT
-    const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "5m" });
+    const resetToken = jwt.sign({ id: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "5m" });
 
     // Membuat reset URL dengan environment variable
     const resetUrl = `https://www.entsh108.com/forgotPassword/${resetToken}`;
@@ -188,7 +220,7 @@ exports.forgotPassword = async (req, res) => {
       html: `Klik <a href='${resetUrl}'>di sini</a> untuk reset password. Link ini hanya berlaku untuk 5 menit ke depan.`
     });
 
-    return res.status(200).send({ message: `Sent a password reset email to ${email}` });
+    return res.status(200).send({ message: `Link untuk mereset password telah dikrim ke ${email}` });
   } catch (err) {
     return res.status(500).send(err);
   }
@@ -211,7 +243,7 @@ exports.resetPassword = async (req, res) => {
     }
 
     // Temukan pengguna berdasarkan ID yang ada di payload
-    const user = await User.findOne({ _id: payload.ID }).exec();
+    const user = await User.findOne({ _id: payload.id }).exec();
     if (!user) {
       return res.status(404).send({ message: "Pengguna tidak ditemukan" });
     }
@@ -251,7 +283,7 @@ exports.getProfile = async (req, res) => {
 
 // Fungsi untuk mengupdate profil pengguna
 exports.updateProfile = async (req, res) => {
-  const userId = req.user.id; 
+  const userId = req.user.id;
   const { username, profilePict } = req.body;
 
   try {

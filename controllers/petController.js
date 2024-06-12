@@ -2,10 +2,9 @@ const Pet = require("../models/petModel");
 
 exports.createPet = async (req, res) => {
   try {
-    const { name, species, age, thumbnail = null } = req.body; // Menambahkan thumbnail ke dalam body request
-    const owner = req.user.id; // Mengambil ID pengguna dari token JWT yang telah diverifikasi
+    const { name, species, age, thumbnail = null, history = [] } = req.body;
+    const owner = req.user.id;
 
-    // Validasi spesies hewan peliharaan
     if (!["anjing", "kucing", "Anjing", "Kucing"].includes(species)) {
       return res.status(400).json({
         error: true,
@@ -13,7 +12,7 @@ exports.createPet = async (req, res) => {
       });
     }
 
-    const pet = await Pet.create({ name, species, age, owner, thumbnail });
+    const pet = await Pet.create({ name, species, age, owner, thumbnail, history });
     console.log("Hewan peliharaan berhasil ditambahkan:", pet);
     
     const { __v, ...petData } = pet.toObject();
@@ -26,11 +25,10 @@ exports.createPet = async (req, res) => {
 
 exports.getPets = async (req, res) => {
   try {
-    const owner = req.user.id; // Mengambil ID pengguna dari token JWT yang telah diverifikasi
+    const owner = req.user.id;
 
     const pets = await Pet.find({ owner }).select('-__v');
 
-    // Memeriksa apakah pengguna memiliki hewan peliharaan atau tidak
     if (pets.length === 0) {
       return res.status(404).json({
         error: true,
@@ -62,9 +60,8 @@ exports.getPetById = async (req, res) => {
 
 exports.updatePet = async (req, res) => {
   try {
-    const { name, species, age, thumbnail = null } = req.body;
+    const { name, species, age, thumbnail = null, history = [] } = req.body;
 
-    // Validasi spesies hewan peliharaan
     if (species && !["anjing", "kucing", "Anjing", "Kucing"].includes(species)) {
       return res.status(400).json({
         error: true,
@@ -74,7 +71,7 @@ exports.updatePet = async (req, res) => {
 
     const pet = await Pet.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
-      { name, species, age, thumbnail },
+      { name, species, age, thumbnail, history },
       { new: true }
     ).select('-__v');
     if (!pet) {
