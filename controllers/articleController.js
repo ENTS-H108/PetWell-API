@@ -29,7 +29,7 @@ exports.createArticle = async (req, res) => {
 
 exports.getArticles = async (req, res) => {
   try {
-    const { type } = req.query;
+    const { type, page = 1, size = 10 } = req.query;
 
     if (type && !['artikel', 'promo'].includes(type)) {
       return res.status(400).json({
@@ -39,11 +39,19 @@ exports.getArticles = async (req, res) => {
     }
 
     const filter = type ? { type } : {};
-    const articles = await Article.find(filter).select('-timestamp -__v');
+    const limit = parseInt(size, 10);
+    const skip = (parseInt(page, 10) - 1) * limit;
+
+    const articles = await Article.find(filter).sort({ timestamp: -1 }).skip(skip).limit(limit).select('-timestamp -__v');
+    const totalArticles = await Article.countDocuments(filter);
+
     res.json({
       error: false,
       message: "List artikel berhasil diambil",
       listArticle: articles,
+      totalArticles,
+      currentPage: parseInt(page, 10),
+      totalPages: Math.ceil(totalArticles / limit)
     });
   } catch (err) {
     res.status(500).json({ error: true, message: err.message });
