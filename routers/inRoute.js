@@ -29,6 +29,7 @@ router.get("/pets", authenticateJWT, PetController.getPets);
 router.get("/pets/:id", authenticateJWT, PetController.getPetById);
 router.put("/pets/:id", authenticateJWT, PetController.updatePet);
 router.delete("/pets/:id", authenticateJWT, PetController.deletePet);
+router.post("/pets/:id/addhistory", authenticateJWT, validateRequest, PetController.addHistory);
 
 //router untuk profile
 router.get("/profile", authenticateJWT, UserController.getProfile);
