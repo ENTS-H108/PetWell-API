@@ -22,7 +22,7 @@ const UserSchema = mongoose.Schema({
   provider: {
     type: String,
     enum: ["reguler", "google"],
-    default: "google",
+    default: "reguler",
   },
   verified: {
     type: Boolean,
@@ -35,4 +35,5 @@ UserSchema.methods.generateVerificationToken = function () {
   const verificationToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "7d" });
   return verificationToken;
 };
+
 module.exports = mongoose.model("User", UserSchema);
