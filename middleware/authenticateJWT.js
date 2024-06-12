@@ -18,7 +18,9 @@ const authenticateJWT = async (req, res, next) => {
     }
 
     jwt.verify(token, process.env.JWT_KEY, (err, user) => {
-      if (err) return res.sendStatus(403); // Invalid token
+      if (err) {
+        return res.sendStatus(403).json({ message: "Token invalid" });
+      }
       req.user = user;
       next();
     });
