@@ -1,8 +1,9 @@
 const Pet = require("../models/petModel");
+const History = require("../models/historyModel");
 
 exports.createPet = async (req, res) => {
   try {
-    const { name, species, age, thumbnail = null, history = [] } = req.body;
+    const { name, species, age } = req.body;
     const owner = req.user.id;
 
     if (!["anjing", "kucing", "Anjing", "Kucing"].includes(species)) {
@@ -12,12 +13,12 @@ exports.createPet = async (req, res) => {
       });
     }
 
-    const pet = await Pet.create({ name, species, age, owner, thumbnail, history });
+    const pet = await Pet.create({ name, species, age, owner });
     console.log("Hewan peliharaan berhasil ditambahkan:", pet);
-    
+
     const { __v, ...petData } = pet.toObject();
 
-    res.status(201).json({ error: false, message: "Hewan peliharaan berhasil ditambahkan", pet: { ...petData, owner } });
+    res.status(201).json({ error: false, message: "Hewan peliharaan berhasil ditambahkan", ...petData });
   } catch (err) {
     res.status(500).json({ error: true, message: err.message });
   }
@@ -48,11 +49,20 @@ exports.getPets = async (req, res) => {
 
 exports.getPetById = async (req, res) => {
   try {
-    const pet = await Pet.findOne({ _id: req.params.id, owner: req.user.id }).select('-timestamp -__v');
+    const pet = await Pet.findOne({ _id: req.params.id, owner: req.user.id }).select('-__v');
     if (!pet) {
       return res.status(404).json({ message: "Hewan peliharaan tidak ditemukan" });
     }
-    res.json({ error: false, pet });
+
+    const histories = await History.find({ pet: pet._id }).select('-__v -pet');
+    const historyList = histories.map(hist => ({ type: hist.type, detail: hist.detail }));
+
+    let response = { error: false, ...pet.toObject(), history: historyList };
+    if (historyList.length === 0) {
+      response.message = `Pet ${pet.name} belum memiliki history aktivitas apapun`;
+    }
+
+    res.json(response);
   } catch (err) {
     res.status(500).json({ error: true, message: err.message });
   }
@@ -60,7 +70,7 @@ exports.getPetById = async (req, res) => {
 
 exports.updatePet = async (req, res) => {
   try {
-    const { name, species, age, thumbnail = null, history = [] } = req.body;
+    const { name, species, age } = req.body;
 
     if (species && !["anjing", "kucing", "Anjing", "Kucing"].includes(species)) {
       return res.status(400).json({
@@ -71,14 +81,15 @@ exports.updatePet = async (req, res) => {
 
     const pet = await Pet.findOneAndUpdate(
       { _id: req.params.id, owner: req.user.id },
-      { name, species, age, thumbnail, history },
+      { name, species, age },
       { new: true }
     ).select('-__v');
     if (!pet) {
       return res.status(404).json({ message: "Hewan peliharaan tidak ditemukan" });
     }
+
     console.log("Hewan peliharaan berhasil diperbarui:", pet);
-    res.json({ error: false, message: "Hewan peliharaan berhasil diperbarui", pet });
+    res.json({ error: false, message: "Hewan peliharaan berhasil diperbarui", ...pet.toObject() });
   } catch (err) {
     res.status(500).json({ error: true, message: err.message });
   }
@@ -90,8 +101,30 @@ exports.deletePet = async (req, res) => {
     if (!pet) {
       return res.status(404).json({ message: "Hewan peliharaan tidak ditemukan" });
     }
+
+    await History.deleteMany({ pet: pet._id });
+
     console.log("Hewan peliharaan berhasil dihapus:", pet);
     res.json({ error: false, message: "Hewan peliharaan berhasil dihapus" });
+  } catch (err) {
+    res.status(500).json({ error: true, message: err.message });
+  }
+};
+
+exports.addHistory = async (req, res) => {
+  try {
+    const { type, timestamp } = req.body;
+    const petId = req.params.id;
+
+    const pet = await Pet.findOne({ _id: petId, owner: req.user.id });
+    if (!pet) {
+      return res.status(404).json({ message: "Hewan peliharaan tidak ditemukan" });
+    }
+
+    const history = await History.create({ type, timestamp, pet: petId });
+    console.log("History berhasil ditambahkan:", history);
+
+    res.status(201).json({ error: false, message: "History berhasil ditambahkan", history });
   } catch (err) {
     res.status(500).json({ error: true, message: err.message });
   }
