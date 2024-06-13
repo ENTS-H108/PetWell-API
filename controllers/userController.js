@@ -136,6 +136,15 @@ const createNewSession = async (user, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   console.log("Percobaan login:", { email, password });
+  const user = await User.findOne({ email }).exec();
+
+  // Cek apakah provider adalah Google
+  if (user.provider === "google") {
+    console.log("Pengguna adalah pengguna Google:", email);
+    return res.status(403).send({
+      message: "Anda mendaftar dengan akun Google. Silakan login dengan Google.",
+    });
+  }
 
   // Cek kelengkapan email dan password
   if (!email && !password) {
@@ -146,7 +155,6 @@ exports.login = async (req, res) => {
 
   try {
     // Cek apakah pengguna ditemukan
-    const user = await User.findOne({ email }).exec();
     if (!user) {
       console.log("Pengguna tidak ditemukan:", email);
       return res.status(404).send({
@@ -165,7 +173,7 @@ exports.login = async (req, res) => {
     // Cek apakah password sesuai dan benar
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
-      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY);
       console.log("Login berhasil untuk pengguna:", email);
       return res.status(200).json({
         message: "Login Berhasil",
