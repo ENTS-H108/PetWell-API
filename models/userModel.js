@@ -9,19 +9,23 @@ const UserSchema = mongoose.Schema({
   },
   username: {
     type: String,
-    required: true,
+    default: null,
   },
   password: {
     type: String,
-    required: true,
+    default: null,
   },
   profilePict: {
     type: String,
     default: null
   },
+  googleId: {
+    type: String,
+    default: null,
+  },
   provider: {
     type: String,
-    enum: ["reguler", "google"],
+    enum: ["reguler", "google", "multiProvider"],
     default: "reguler",
   },
   verified: {

@@ -9,12 +9,15 @@ const validate = require("../middleware/validator");
 const validateRequest = require("../middleware/validateRequest");
 const authenticateJWT = require("../middleware/authenticateJWT");
 
-// router login dan regis
+// router autentikasi reguler
 router.post("/signup", validate.validateSignup, validateRequest, UserController.signup);
 router.post("/login", validate.validateLogin, validateRequest, UserController.login);
 router.post("/forgot-password", validate.validateForgot,  UserController.forgotPassword);
 router.post("/reset-password", validate.validateReset, UserController.resetPassword);
 router.get("/verify/:token", UserController.verify);
+
+//router autentikasi google
+router.post("/auth/google", UserController.googleLogin);
 
 // router fitur artikel
 router.post("/articles", authenticateJWT, ArticleController.createArticle);

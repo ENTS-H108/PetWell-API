@@ -6,6 +6,7 @@ const User = require("../models/userModel.js");
 const bcrypt = require("bcrypt");
 const Blacklist = require('../models/blacklistModel.js');
 const Session = require("../models/sessionModel.js");
+const { OAuth2Client } = require('google-auth-library');
 
 const transporter = nodemailer.createTransport({
   service: "Gmail",
@@ -19,60 +20,41 @@ const transporter = nodemailer.createTransport({
 exports.signup = async (req, res) => {
   const { username, email, password } = req.body;
 
-  let provider = "reguler";
+  if (!email || !username || !password) {
+    return res.status(422).send({
+      message: "Data tidak lengkap",
+    });
+  }
 
-  if (password.length > 16) {
-    provider = "google";
-    try {
-      const existingUser = await User.findOne({ email }).exec();
-      if (!existingUser) {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({
-          _id: new mongoose.Types.ObjectId(),
-          email,
-          username,
-          password: hashedPassword,
-          provider,
-          verified: true,
-        });
-        await user.save();
-        return await exports.login({ body: { email, password } }, res);
-      } else {
-        existingUser.provider = "google";
+  try {
+    // Memeriksa apakah email sudah digunakan
+    const existingUser = await User.findOne({ email }).exec();
+    if (existingUser) {
+      if (existingUser.provider === "google") {
+        // User exists dengan provider Google, update password and rubah provider dengan multiProvider
+        existingUser.password = await bcrypt.hash(password, 10);
+        existingUser.provider = "multiProvider";
+        existingUser.username = username;
         await existingUser.save();
-        existingPassword = existingUser.password;
-        return await exports.login({ body: { email, password: existingPassword } }, res);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      return res.status(500).json({ error: "Internal Server Error" });
-    }
-  } else {
-    if (!email || !username || !password) {
-      return res.status(422).send({
-        message: "Data tidak lengkap register",
-      });
-    }
-
-    try {
-      // Memeriksa apakah email sudah digunakan
-      const existingEmail = await User.findOne({ email }).exec();
-      if (existingEmail) {
+        return res.status(200).send({
+          message: "Akun Google ditemukan, sekarang Anda dapat login dengan email dan password",
+        });
+      } else if (existingUser.provider === "reguler" || existingUser.provider === "multiProvider") {
         return res.status(409).send({
-          message: "Email sudah digunakan.",
+          message: "Email telah digunakan.",
         });
       }
-
+    } else {
       // Hash password menggunakan bcrypt
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Membuat dan menyimpan user
+      // Membuat dan menyimpan user baru
       const user = await new User({
         _id: new mongoose.Types.ObjectId(),
         email,
         username,
         password: hashedPassword,
-        provider,
+        provider: "reguler",
       }).save();
 
       // Generate token verifikasi dengan user ID
@@ -89,46 +71,33 @@ exports.signup = async (req, res) => {
       return res.status(201).send({
         message: `Email verifikasi telah dikirim ke ${email}`,
       });
-    } catch (err) {
-      return res.status(500).send(err);
     }
+  } catch (err) {
+    return res.status(500).send(err);
   }
 };
 
-// Fungsi login
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  console.log("Percobaan login:", { email, password });
-  const user = await User.findOne({ email }).exec();
-  const passwordMatch = await bcrypt.compare(password, user.password);
+// Fungsi untuk mengirim notifikasi email login
+const sendLoginNotificationEmail = async (email, username) => {
+  const loginNotificationEmail = {
+    to: email,
+    subject: "Login Ditemukan di Akun Petwell Anda",
+    html: `
+      <p>Hai ${username},</p>
+      <p>Login baru ditemukan dari aplikasi Petwell menggunakan akun email Anda (${email}).</p>
+      <p>Jika ini bukan Anda, silakan segera reset password melalui aplikasi PetWell!</a>.</p>
+      <p>Jika ini Anda, abaikan pesan ini.</p>
+      <br>
+      <p>Terima kasih,</p>
+      <p>Tim Petwell</p>
+    `
+  };
 
-  if ((user.provider == "google")) {
-    return await createNewSession(user, res);
-  } else {
-    if (!email || !password) {
-      return res.status(422).send({ message: "Data login tidak lengkap" });
-    }
-    try {
-      if (!user) {
-        console.log("Pengguna tidak ditemukan:", email);
-        return res.status(404).send({ error: "Pengguna tidak ditemukan" });
-      }
-
-      if (!user.verified) {
-        console.log("Akun belum diverifikasi:", email);
-        return res.status(403).send({ message: "Verifikasi akun Anda." });
-      }
-
-      if (passwordMatch) {
-        return await createNewSession(user, res);
-      } else {
-        console.log("Password salah untuk pengguna:", email);
-        return res.status(401).json({ error: "Email atau Password salah" });
-      }
-    } catch (err) {
-      console.error("Kesalahan server internal selama login:", err);
-      return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
-    }
+  try {
+    await transporter.sendMail(loginNotificationEmail);
+    console.log(`Login notification email sent to ${email}`);
+  } catch (error) {
+    console.error(`Error sending login notification email to ${email}:`, error);
   }
 };
 
@@ -147,6 +116,9 @@ const createNewSession = async (user, res) => {
   // Save the new session
   await Session.create({ userId: user._id, token });
 
+  // Send login notification email
+  await sendLoginNotificationEmail(user.email, user.username);
+
   console.log("Login berhasil untuk pengguna:", user.email);
   return res.status(200).json({
     message: "Login Berhasil",
@@ -158,6 +130,103 @@ const createNewSession = async (user, res) => {
       profilePict: user.profilePict || "",
     }
   });
+};
+
+// Fungsi login reguler
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+  console.log("Percobaan login:", { email, password });
+
+  // Cek kelengkapan email dan password
+  if (!email && !password) {
+    return res.status(422).send({
+      message: "Data tidak lengkap",
+    });
+  }
+
+  try {
+    // Cek apakah pengguna ditemukan
+    const user = await User.findOne({ email }).exec();
+    if (!user) {
+      console.log("Pengguna tidak ditemukan:", email);
+      return res.status(404).send({
+        error: "Email atau Password salah",
+      });
+    }
+
+    // Cek apakah akun telah terverifikasi
+    if (!user.verified) {
+      console.log("Akun belum diverifikasi:", email);
+      return res.status(403).send({
+        message: "Verifikasi akun Anda.",
+      });
+    }
+
+    // Cek apakah password sesuai dan benar
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (passwordMatch) {
+      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY, { expiresIn: "1h" });
+      console.log("Login berhasil untuk pengguna:", email);
+      return res.status(200).json({
+        message: "Login Berhasil",
+        token,
+        username: user.username,
+      });
+    } else {
+      console.log("Password salah untuk pengguna:", email);
+      return res.status(401).json({ error: "Email atau Password salah" });
+    }
+  } catch (err) {
+    console.error("Kesalahan server internal selama login:", err);
+    return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
+  }
+};
+
+//Fungsi verifikasi token google
+const client = new OAuth2Client(process.env.CLIENT_ID);
+
+async function verifyGoogleToken(token) {
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.CLIENT_ID,
+    });
+    return ticket.getPayload();
+  } catch (error) {
+    throw new Error('Invalid Google token');
+  }
+}
+
+//Fungsi login google
+exports.googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const payload = await verifyGoogleToken(token);
+    const { email, sub: googleId } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.provider = "multiProvider";
+      }
+    } else {
+      user = new User({
+        _id: new mongoose.Types.ObjectId(),
+        email: payload.email,
+        username: payload.name,
+        googleId: googleId,
+        provider: "google",
+        verified: true,
+      });
+    }
+    await user.save();
+    return await createNewSession(user, res);
+  } catch (error) {
+    console.error("Error during Google login:", error);
+    res.status(401).json({ message: 'Invalid Google Token' });
+  }
 };
 
 // Fungsi verifikasi email
@@ -178,7 +247,7 @@ exports.verify = async (req, res) => {
   }
   try {
     // Cari user dengan ID yang sesuai
-    const user = await User.findOne({ _id: payload.id }).exec();
+    const user = await User.findOne({ _id: payload.ID }).exec();
     if (!user) {
       return res.status(404).send({
         message: "Pengguna tidak ditemukan",
@@ -209,7 +278,7 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // Membuat token reset password menggunakan JWT
-    const resetToken = jwt.sign({ id: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "5m" });
+    const resetToken = jwt.sign({ ID: user._id }, process.env.USER_VERIFICATION_TOKEN_SECRET, { expiresIn: "5m" });
 
     // Membuat reset URL dengan environment variable
     const resetUrl = `https://www.entsh108.com/forgotPassword/${resetToken}`;
@@ -243,7 +312,7 @@ exports.resetPassword = async (req, res) => {
     }
 
     // Temukan pengguna berdasarkan ID yang ada di payload
-    const user = await User.findOne({ _id: payload.id }).exec();
+    const user = await User.findOne({ _id: payload.ID }).exec();
     if (!user) {
       return res.status(404).send({ message: "Pengguna tidak ditemukan" });
     }
