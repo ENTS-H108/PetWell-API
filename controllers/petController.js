@@ -54,8 +54,11 @@ exports.getPetById = async (req, res) => {
       return res.status(404).json({ message: "Hewan peliharaan tidak ditemukan" });
     }
 
-    const histories = await History.find({ pet: pet._id }).select('-__v -pet');
-    const historyList = histories.map(hist => ({ type: hist.type, detail: hist.detail }));
+    const histories = await History.find({ pet: pet._id })
+    .sort({ timestamp: -1 })
+    .select('-__v -pet');
+    
+    const historyList = histories.map(hist => ({ type: hist.type, timestamp: hist.timestamp }));
 
     let response = { error: false, ...pet.toObject(), history: historyList };
     if (historyList.length === 0) {
