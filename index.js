@@ -10,6 +10,12 @@ const PORT = process.env.PORT || 3000;
 const db = require("./config/db");
 const allRoutes = require("./routers/inRoute");
 
+app.set('trust proxy', 1);
+
+app.get('/ip', (req, res) => {
+  res.send(`Your IP address: ${req.ip}`);
+});
+
 db.then(() => {
   console.log("Sukses melakukan koneksi ke MongoDB");
 }).catch(() => {
