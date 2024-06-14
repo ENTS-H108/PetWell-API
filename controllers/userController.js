@@ -121,7 +121,7 @@ const sendLoginNotificationEmail = async (email, username) => {
 
   try {
     await transporter.sendMail(loginNotificationEmail);
-    console.log(`Login notification email sent to ${email}`);
+    console.log(`Email notifikasi login dikirim ke ${email}`);
   } catch (error) {
     console.error(`Error sending login notification email to ${email}:`, error);
   }
@@ -412,15 +412,10 @@ exports.updateProfile = async (req, res) => {
 // Fungsi untuk mengubah password
 exports.changePassword = async (req, res) => {
   const userId = req.user.id;
-  const { currPassword, newPassword, confirmPassword } = req.body;
+  const { currPassword, newPassword, } = req.body;
   const user = await User.findById(userId).exec();
 
   console.log("Terdapat percobaan rubah password:", user.email);
-
-  // Validasi bahwa newPassword dan confirmPassword harus sesuai
-  if (newPassword !== confirmPassword) {
-    return res.status(422).send({ message: "Password baru dan konfirmasi password tidak sesuai" });
-  }
 
   try {
     // Temukan pengguna berdasarkan ID
@@ -431,6 +426,7 @@ exports.changePassword = async (req, res) => {
     // Periksa apakah currPassword cocok
     const passwordMatch = await bcrypt.compare(currPassword, user.password);
     if (!passwordMatch) {
+      console.log("Perubahan password gagal, password saat ini tidak sesuai:", user.email);
       return res.status(401).send({ message: "Password saat ini salah" });
     }
 
@@ -444,6 +440,7 @@ exports.changePassword = async (req, res) => {
     console.log("Perubahan password berhasil:", user.email);
     return res.status(200).send({ message: "Password berhasil diubah" });
   } catch (err) {
+    console.log("Perubahan password gagal", err);
     return res.status(500).send(err);
   }
 };
