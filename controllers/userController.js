@@ -408,3 +408,42 @@ exports.updateProfile = async (req, res) => {
     return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
   }
 };
+
+// Fungsi untuk mengubah password
+exports.changePassword = async (req, res) => {
+  const userId = req.user.id;
+  const { currPassword, newPassword, confirmPassword } = req.body;
+  const user = await User.findById(userId).exec();
+
+  console.log("Terdapat percobaan rubah password:", user.email);
+
+  // Validasi bahwa newPassword dan confirmPassword harus sesuai
+  if (newPassword !== confirmPassword) {
+    return res.status(422).send({ message: "Password baru dan konfirmasi password tidak sesuai" });
+  }
+
+  try {
+    // Temukan pengguna berdasarkan ID
+    if (!user) {
+      return res.status(404).send({ message: "Pengguna tidak ditemukan" });
+    }
+
+    // Periksa apakah currPassword cocok
+    const passwordMatch = await bcrypt.compare(currPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(401).send({ message: "Password saat ini salah" });
+    }
+
+    // Hash password baru
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password pengguna
+    user.password = hashedPassword;
+    await user.save();
+
+    console.log("Perubahan password berhasil:", user.email);
+    return res.status(200).send({ message: "Password berhasil diubah" });
+  } catch (err) {
+    return res.status(500).send(err);
+  }
+};

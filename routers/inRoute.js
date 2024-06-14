@@ -12,8 +12,8 @@ const authenticateJWT = require("../middleware/authenticateJWT");
 // router autentikasi reguler
 router.post("/signup", validate.validateSignup, validateRequest, UserController.signup);
 router.post("/login", validate.validateLogin, validateRequest, UserController.login);
-router.post("/forgot-password", validate.validateForgot,  UserController.forgotPassword);
-router.post("/reset-password", validate.validateReset, UserController.resetPassword);
+router.post("/forgot-password", validate.validateForgotPassword,  UserController.forgotPassword);
+router.post("/reset-password", validate.validateResetPassword, UserController.resetPassword);
 router.get("/verify/:token", UserController.verify);
 
 //router autentikasi google
@@ -37,5 +37,6 @@ router.post("/pets/:id/addhistory", authenticateJWT, validateRequest, PetControl
 //router untuk profile
 router.get("/profile", authenticateJWT, UserController.getProfile);
 router.put("/profile", authenticateJWT, UserController.updateProfile);
+router.put("/profile/change-password", authenticateJWT, validate.validateChangePassword, UserController.changePassword);
 
 module.exports = router;
