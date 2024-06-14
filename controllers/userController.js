@@ -423,11 +423,19 @@ exports.changePassword = async (req, res) => {
       return res.status(404).send({ message: "Pengguna tidak ditemukan" });
     }
 
+    // Periksa apakah provider google
+    if (user.provider === "google"){
+      console.log("Perubahan password gagal, tipe akun adalah google:", user.email);
+      return res.status(403).send({
+        message: "Anda mendaftar dengan akun Google, tidak dapat merubah password.",
+      });
+    }
+
     // Periksa apakah currPassword cocok
     const passwordMatch = await bcrypt.compare(currPassword, user.password);
     if (!passwordMatch) {
       console.log("Perubahan password gagal, password saat ini tidak sesuai:", user.email);
-      return res.status(401).send({ message: "Password saat ini salah" });
+      return res.status(401).send({ message: "Password saat ini salah." });
     }
 
     // Hash password baru
@@ -438,9 +446,9 @@ exports.changePassword = async (req, res) => {
     await user.save();
 
     console.log("Perubahan password berhasil:", user.email);
-    return res.status(200).send({ message: "Password berhasil diubah" });
+    return res.status(200).send({ message: "Password berhasil diubah." });
   } catch (err) {
-    console.log("Perubahan password gagal", err);
+    console.log("Perubahan password gagal.", err);
     return res.status(500).send(err);
   }
 };
