@@ -42,7 +42,7 @@ exports.getArticles = async (req, res) => {
     const limit = parseInt(size, 10);
     const skip = (parseInt(page, 10) - 1) * limit;
 
-    const articles = await Article.find(filter).sort({ timestamp: -1 }).skip(skip).limit(limit).select('-timestamp -__v');
+    const articles = await Article.find(filter).sort({ timestamp: -1 }).skip(skip).limit(limit).select('-__v');
     const totalArticles = await Article.countDocuments(filter);
 
     res.json({
