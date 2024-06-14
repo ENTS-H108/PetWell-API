@@ -8,6 +8,7 @@ const Blacklist = require('../models/blacklistModel.js');
 const Session = require("../models/sessionModel.js");
 const { OAuth2Client } = require('google-auth-library');
 
+// Transporter email
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
@@ -15,6 +16,43 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASSWORD,
   },
 });
+
+// Fungsi verifikasi email
+const verifyEmail = async (email, res) => {
+  try {
+    const user = await User.findOne({ email }).exec();
+    if (!user) {
+      return res.status(404).send({
+        message: "Pengguna tidak ditemukan",
+      });
+    }
+
+    if (user.verified) {
+      return res.status(400).send({
+        message: "Akun anda sudah terverifikasi, silahkan login",
+      });
+    }
+
+    const verificationToken = jwt.sign(
+      { ID: user._id },
+      process.env.USER_VERIFICATION_TOKEN_SECRET,
+    );
+
+    const url = `${process.env.BASE_URL}/verify/${verificationToken}`;
+
+    transporter.sendMail({
+      to: email,
+      subject: "Verifikasi Akun PetWell",
+      html: `Klik <a href='${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
+    });
+
+    return res.status(201).send({
+      message: `Email verifikasi telah dikirim ke ${email}`,
+    });
+  } catch (err) {
+    return res.status(500).send(err);
+  }
+};
 
 // Fungsi register
 exports.signup = async (req, res) => {
@@ -35,10 +73,10 @@ exports.signup = async (req, res) => {
         existingUser.password = await bcrypt.hash(password, 10);
         existingUser.provider = "multiProvider";
         existingUser.username = username;
+        existingUser.verified = false;
+
         await existingUser.save();
-        return res.status(200).send({
-          message: "Akun Google ditemukan, sekarang Anda dapat login dengan email dan password",
-        });
+        await verifyEmail(email, res);
       } else if (existingUser.provider === "reguler" || existingUser.provider === "multiProvider") {
         return res.status(409).send({
           message: "Email telah digunakan.",
@@ -57,20 +95,8 @@ exports.signup = async (req, res) => {
         provider: "reguler",
       }).save();
 
-      // Generate token verifikasi dengan user ID
-      const verificationToken = user.generateVerificationToken();
-
-      // Email ke user link verifikasi (unik)
-      const url = `${process.env.BASE_URL}/verify/${verificationToken}`;
-
-      transporter.sendMail({
-        to: email,
-        subject: "Verifikasi Akun",
-        html: `Klik <a href='${url}'>di sini</a> untuk mengkonfirmasi email Anda.`,
-      });
-      return res.status(201).send({
-        message: `Email verifikasi telah dikirim ke ${email}`,
-      });
+      // Panggil fungsi verifyEmail untuk mengirim email verifikasi
+      await verifyEmail(email, res);
     }
   } catch (err) {
     return res.status(500).send(err);
@@ -121,26 +147,20 @@ const createNewSession = async (user, res) => {
 
   console.log("Login berhasil untuk pengguna:", user.email);
   return res.status(200).json({
-    message: "Login Berhasil",
-    user: {
-      token,
-      provider: user.provider,
-      email: user.email,
-      username: user.username,
-      profilePict: user.profilePict || "",
-    }
+    message: "Login berhasil",
+    token: token,
   });
 };
 
 // Fungsi login reguler
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  console.log("Percobaan login:", { email, password });
+  console.log("Percobaan login reguler:", { email });
   const user = await User.findOne({ email }).exec();
 
   // Cek apakah provider adalah Google
   if (user.provider === "google") {
-    console.log("Pengguna adalah pengguna Google:", email);
+    console.log("Percobaan logi reguler gagal, pengguna berikut memiliki akun bertipe google:", email);
     return res.status(403).send({
       message: "Anda mendaftar dengan akun Google. Silakan login dengan Google.",
     });
@@ -148,6 +168,7 @@ exports.login = async (req, res) => {
 
   // Cek kelengkapan email dan password
   if (!email && !password) {
+    console.log("Percobaan login baru terdeteksi, data tidak lengkap untuk akun: ", email);
     return res.status(422).send({
       message: "Data tidak lengkap",
     });
@@ -156,6 +177,7 @@ exports.login = async (req, res) => {
   try {
     // Cek apakah pengguna ditemukan
     if (!user) {
+      console.log("Percobaan login baru terdeteksi, pengguna ditemukan: ", email);
       console.log("Pengguna tidak ditemukan:", email);
       return res.status(404).send({
         error: "Email atau Password salah",
@@ -164,7 +186,7 @@ exports.login = async (req, res) => {
 
     // Cek apakah akun telah terverifikasi
     if (!user.verified) {
-      console.log("Akun belum diverifikasi:", email);
+      console.log("Percobaan login baru terdeteksi, akun belum diverifikasi:", email);
       return res.status(403).send({
         message: "Verifikasi akun Anda.",
       });
@@ -173,13 +195,7 @@ exports.login = async (req, res) => {
     // Cek apakah password sesuai dan benar
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (passwordMatch) {
-      const token = jwt.sign({ id: user._id }, process.env.JWT_KEY);
-      console.log("Login berhasil untuk pengguna:", email);
-      return res.status(200).json({
-        message: "Login Berhasil",
-        token,
-        username: user.username,
-      });
+      return await createNewSession(user, res);
     } else {
       console.log("Password salah untuk pengguna:", email);
       return res.status(401).json({ error: "Email atau Password salah" });
@@ -201,6 +217,7 @@ async function verifyGoogleToken(token) {
     });
     return ticket.getPayload();
   } catch (error) {
+    console.log("Percobaan login gagal, token google invalid");
     throw new Error('Invalid Google token');
   }
 }
@@ -211,6 +228,8 @@ exports.googleLogin = async (req, res) => {
     const { token } = req.body;
     const payload = await verifyGoogleToken(token);
     const { email, sub: googleId } = payload;
+
+    console.log("Percobaan login google:", { email });
 
     let user = await User.findOne({ email });
 
@@ -275,6 +294,9 @@ exports.verify = async (req, res) => {
 // Fungsi lupa password
 exports.forgotPassword = async (req, res) => {
   const { email } = req.body;
+
+  console.log("Percobaan reset password terdeteksi pada akun: ", email);
+
   if (!email) {
     return res.status(422).send({ message: "Email diperlukan" });
   }
@@ -384,5 +406,44 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).send({ message: "Kesalahan Server Internal", error: err });
+  }
+};
+
+// Fungsi untuk mengubah password
+exports.changePassword = async (req, res) => {
+  const userId = req.user.id;
+  const { currPassword, newPassword, confirmPassword } = req.body;
+  const user = await User.findById(userId).exec();
+
+  console.log("Terdapat percobaan rubah password:", user.email);
+
+  // Validasi bahwa newPassword dan confirmPassword harus sesuai
+  if (newPassword !== confirmPassword) {
+    return res.status(422).send({ message: "Password baru dan konfirmasi password tidak sesuai" });
+  }
+
+  try {
+    // Temukan pengguna berdasarkan ID
+    if (!user) {
+      return res.status(404).send({ message: "Pengguna tidak ditemukan" });
+    }
+
+    // Periksa apakah currPassword cocok
+    const passwordMatch = await bcrypt.compare(currPassword, user.password);
+    if (!passwordMatch) {
+      return res.status(401).send({ message: "Password saat ini salah" });
+    }
+
+    // Hash password baru
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password pengguna
+    user.password = hashedPassword;
+    await user.save();
+
+    console.log("Perubahan password berhasil:", user.email);
+    return res.status(200).send({ message: "Password berhasil diubah" });
+  } catch (err) {
+    return res.status(500).send(err);
   }
 };
