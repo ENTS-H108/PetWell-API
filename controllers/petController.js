@@ -116,7 +116,7 @@ exports.deletePet = async (req, res) => {
 
 exports.addHistory = async (req, res) => {
   try {
-    const { type, timestamp } = req.body;
+    const { type } = req.body;
     const petId = req.params.id;
 
     const pet = await Pet.findOne({ _id: petId, owner: req.user.id });
@@ -124,7 +124,7 @@ exports.addHistory = async (req, res) => {
       return res.status(404).json({ message: "Hewan peliharaan tidak ditemukan" });
     }
 
-    const history = await History.create({ type, timestamp, pet: petId });
+    const history = await History.create({ type, pet: petId });
     console.log("History berhasil ditambahkan:", history);
 
     res.status(201).json({ error: false, message: "History berhasil ditambahkan", history });
