@@ -23,12 +23,6 @@ const validateResetPassword = [
 const validateChangePassword = [
   body("currPassword").not().isEmpty().trim().escape(),
   body("newPassword").not().isEmpty().trim().escape(),
-  body("confirmPassword").not().isEmpty().trim().escape().custom((value, { req }) => {
-    if (value !== req.body.newPassword) {
-      throw new Error('Password baru dan konfirmasi password tidak sesuai');
-    }
-    return true;
-  })
 ];
 
 module.exports = {
