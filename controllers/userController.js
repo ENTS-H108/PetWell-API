@@ -154,39 +154,39 @@ const createNewSession = async (user, res) => {
 
 // Fungsi login reguler
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  console.log("Percobaan login reguler:", { email });
-  const user = await User.findOne({ email }).exec();
-
-  // Cek apakah provider adalah Google
-  if (user.provider === "google") {
-    console.log("Percobaan logi reguler gagal, pengguna berikut memiliki akun bertipe google:", email);
-    return res.status(403).send({
-      message: "Anda mendaftar dengan akun Google. Silakan login dengan Google.",
-    });
-  }
-
-  // Cek kelengkapan email dan password
-  if (!email && !password) {
-    console.log("Percobaan login baru terdeteksi, data tidak lengkap untuk akun: ", email);
-    return res.status(422).send({
-      message: "Data tidak lengkap",
-    });
-  }
-
   try {
+    const { email, password } = req.body;
+    console.log("Percobaan login reguler:", { email });
+    const user = await User.findOne({ email }).exec();
+
     // Cek apakah pengguna ditemukan
     if (!user) {
-      console.log("Percobaan login baru terdeteksi, pengguna ditemukan: ", email);
+      console.log("Percobaan login reguler gagal, pengguna ditemukan: ", email);
       console.log("Pengguna tidak ditemukan:", email);
       return res.status(404).send({
         error: "Email atau Password salah",
       });
     }
 
+    // Cek apakah provider adalah Google
+    if (user.provider === "google") {
+      console.log("Percobaan login reguler gagal, pengguna berikut memiliki akun bertipe google:", email);
+      return res.status(403).send({
+        message: "Anda mendaftar dengan akun Google. Silakan login dengan Google.",
+      });
+    }
+
+    // Cek kelengkapan email dan password
+    if (!email && !password) {
+      console.log("Percobaan login reguler gagal, data tidak lengkap untuk akun: ", email);
+      return res.status(422).send({
+        message: "Data tidak lengkap",
+      });
+    }
+
     // Cek apakah akun telah terverifikasi
     if (!user.verified) {
-      console.log("Percobaan login baru terdeteksi, akun belum diverifikasi:", email);
+      console.log("Percobaan login reguler gagal, akun belum diverifikasi:", email);
       return res.status(403).send({
         message: "Verifikasi akun Anda.",
       });
@@ -424,7 +424,7 @@ exports.changePassword = async (req, res) => {
     }
 
     // Periksa apakah provider google
-    if (user.provider === "google"){
+    if (user.provider === "google") {
       console.log("Perubahan password gagal, tipe akun adalah google:", user.email);
       return res.status(403).send({
         message: "Anda mendaftar dengan akun Google, tidak dapat merubah password.",
