@@ -17,11 +17,11 @@ const authenticateJWT = async (req, res, next) => {
       return res.status(401).json({ message: "Token telah diblokir" });
     }
 
-    jwt.verify(token, process.env.JWT_KEY, (err, user) => {
+    jwt.verify(token, process.env.JWT_KEY, (err, decoded) => {
       if (err) {
         return res.sendStatus(403).json({ message: "Token invalid" });
       }
-      req.user = user;
+      req.user = decoded;
       next();
     });
   } catch (error) {
