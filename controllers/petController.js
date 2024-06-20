@@ -13,7 +13,12 @@ exports.createPet = async (req, res) => {
       });
     }
 
-    const pet = await Pet.create({ name, species, age, owner });
+    const pet = await Pet.create({
+      name, 
+      species, 
+      age, 
+      owner
+    });
     console.log("Hewan peliharaan berhasil ditambahkan:", pet);
 
     const { __v, ...petData } = pet.toObject();
@@ -55,9 +60,9 @@ exports.getPetById = async (req, res) => {
     }
 
     const histories = await History.find({ pet: pet._id })
-    .sort({ timestamp: -1 })
-    .select('-__v -pet');
-    
+      .sort({ timestamp: -1 })
+      .select('-__v -pet');
+
     const historyList = histories.map(hist => ({ type: hist.type, timestamp: hist.timestamp }));
 
     let response = { error: false, ...pet.toObject(), history: historyList };
