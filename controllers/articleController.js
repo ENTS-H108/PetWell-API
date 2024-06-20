@@ -19,7 +19,12 @@ exports.createArticle = async (req, res) => {
       });
     }
 
-    const article = await Article.create({ title, desc, thumbnail, type });
+    const article = await Article.create({
+      title,
+      desc,
+      thumbnail,
+      type
+    });
     console.log("Artikel berhasil ditambahkan:", article);
     res.json({ error: false, message: "success" });
   } catch (err) {
@@ -59,6 +64,7 @@ exports.getArticles = async (req, res) => {
 };
 
 exports.getArticleById = async (req, res) => {
+
   try {
     const article = await Article.findById(req.params.id).select('-timestamp -__v');
     if (!article) {
@@ -72,6 +78,7 @@ exports.getArticleById = async (req, res) => {
 
 exports.updateArticle = async (req, res) => {
   try {
+    const { id } = req.params;
     const { title, desc, thumbnail, type } = req.body;
 
     if (type && !['artikel', 'promo'].includes(type)) {
@@ -81,25 +88,31 @@ exports.updateArticle = async (req, res) => {
       });
     }
 
-    const article = await Article.findByIdAndUpdate(req.params.id, { title, desc, thumbnail, type }, { new: true }).select('-timestamp -__v');
+    const article = await Article.findByIdAndUpdate(
+      id,
+      { title, desc, thumbnail, type },
+      { new: true }
+    ).select('-timestamp -__v');
     if (!article) {
       return res.status(404).json({ message: "Artikel tidak ditemukan" });
     }
     console.log("Artikel berhasil diperbarui:", article);
-    res.json({ error: false, message: "success" });
+    res.json({ error: false, message: "Artikel berhasil diperbarui" });
   } catch (err) {
     res.status(500).json({ error: true, message: err.message });
   }
 };
 
 exports.deleteArticle = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const article = await Article.findByIdAndDelete(req.params.id);
+    const article = await Article.findByIdAndDelete(id);
     if (!article) {
       return res.status(404).json({ message: "Artikel tidak ditemukan" });
     }
-    console.log("Artikel berhasil dihapus:", article);
-    res.json({ message: "Artikel berhasil dihapus" });
+    console.log("Artikel berhasil dihapus");
+    res.status(200).json({ error: false, message: "Artikel berhasil dihapus" });
   } catch (err) {
     res.status(500).json({ error: true, message: err.message });
   }
