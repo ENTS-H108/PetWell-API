@@ -3,6 +3,7 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const tf = require("@tensorflow/tfjs-node");
+const path = require("path");
 
 const app = express();
 
@@ -99,6 +100,7 @@ async function startServer() {
     app.use(helmet());
     app.use(express.json());
     app.use(allRoutes); // Routes from routers/inRoute
+    app.use("/static", express.static(path.join(__dirname, "static")));
 
     // Start the server
     app.listen(PORT, () => {
