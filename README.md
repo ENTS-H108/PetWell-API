@@ -7,8 +7,12 @@ This API provides endpoints to manage authentication for the PetWell application
 `Demo Link:` https://petwell-api-wmaq4jxv4a-et.a.run.app
 
 ## Daftar API Endpoints
+
 1. [User Endpoints](#user-endpoints)
 2. [Artikel Endpoint](#artikel-endpoints)
+3. [Pet Endpoint](#pet-endpoints)
+4. [Profile Endpoint](#profile-endpoints)
+5. [Appointment Endpoint](#appointment-endpoints)
 
 ## User Endpoints
 
@@ -53,7 +57,7 @@ This API provides endpoints to manage authentication for the PetWell application
 - **Body:**
   ```json
   {
-  "email": "example@example.com"
+    "email": "example@example.com"
   }
   ```
 
@@ -65,8 +69,8 @@ This API provides endpoints to manage authentication for the PetWell application
 - **Body:**
   ```json
   {
-  "token": "reset_token_here",
-  "newPassword": "new_example_password"
+    "token": "reset_token_here",
+    "newPassword": "new_example_password"
   }
   ```
 
@@ -77,14 +81,14 @@ This API provides endpoints to manage authentication for the PetWell application
 - **URL:** `/article`
 - **Method:** `POST`
 - **Request Body:**
-    ```json
-    {
-      "title": "Judul Artikel",
-      "desc": "Deskripsi Artikel",
-      "thumbnail": "URL Thumbnail",
-      "type": "Tipe Artikel"
-    }
-    ```
+  ```json
+  {
+    "title": "Judul Artikel",
+    "desc": "Deskripsi Artikel",
+    "thumbnail": "URL Thumbnail",
+    "type": "Tipe Artikel"
+  }
+  ```
 
 ### Mendapatkan Daftar Seluruh Artikel
 
@@ -101,19 +105,117 @@ This API provides endpoints to manage authentication for the PetWell application
 - **URL:** `/article/:id`
 - **Method:** `PUT`
 - **Request Body:**
-    ```json
-    {
-      "title": "Judul Artikel Baru",
-      "desc": "Deskripsi Artikel Baru",
-      "thumbnail": "URL Thumbnail Baru",
-      "type": "Tipe Artikel Baru"
-    }
-    ```
+  ```json
+  {
+    "title": "Judul Artikel Baru",
+    "desc": "Deskripsi Artikel Baru",
+    "thumbnail": "URL Thumbnail Baru",
+    "type": "Tipe Artikel Baru"
+  }
+  ```
 
 ### Menghapus Artikel
 
 - **URL:** `/article/:id`
 - **Method:** `DELETE`
+
+## Pet Endpoints
+
+### Create Pet
+
+- **Endpoint:** `/pets`
+- **Method:** `POST`
+- **Description:** Create a new pet.
+- **Request Body:**
+  ```json
+  {
+    "name": "nama hewan",
+    "species": "kucing/anjing",
+    "age": 3
+  }
+  ```
+
+### Get All Pet
+
+- **Endpoint:** `/pets`
+- **Method:** `GET`
+- **Description:** Get all pet list.
+
+### Get Pet (By Id)
+
+- **Endpoint:** `/pets/:id`
+- **Method:** `GET`
+- **Description:** Get specific pet information.
+
+### Update Pet (By Id)
+
+- **Endpoint:** `/pets/:id`
+- **Method:** `UPDATE`
+- **Description:** Update specific pet information.
+- **Request Body:**
+  ```json
+  {
+    "name": "nama hewan",
+    "species": "kucing/anjing",
+    "age": 3
+  }
+  ```
+
+### Delete Pet (By Id)
+
+- **Endpoint:** `/pets/:id`
+- **Method:** `DELETE`
+- **Description:** Delete specific pet information.
+- **Request Body:**
+
+## Profile Endpoints
+
+### Get Profile
+
+- **Endpoint:** `/profile`
+- **Method:** `GET`
+- **Description:** Get user profile.
+
+### Update Profile
+
+- **Endpoint:** `/profile`
+- **Method:** `UPDATE`
+- **Description:** Update user profile.
+- **Request Body:**
+  ```json
+  {
+    "username": "username",
+    "profilePict": "url"
+  }
+  ```
+
+## Appointment Endpoints
+
+### List Dokter yang tersedia
+
+- **Endpoint:** `/appointments`
+- **Method:** `GET`
+- **Description:** Retrieves a list of all doctors available.
+
+### Detail profil dan jadwal dokter
+
+- **Endpoint:** `/appointments/detail`
+- **Method:** `GET`
+- **Description:** Retrieves details of a specific doctor including their schedules.
+
+### Detail profil dan jadwal dokter
+
+- **Endpoint:** `/appointments/detail`
+- **Method:** `GET`
+- **Description:** Retrieves details of a specific doctor including their schedules.
+- **Query Parameter:** doctorId: ID of the doctor
+
+### Summary appointment
+
+- **Endpoint:** `/appointments/summary`
+- **Method:** `GET`
+- **Description:** Retrieves detailed appointment information based on selected work hour.
+- **Query Parameter:** workHourId: ID of the selected work hour
 
 ## Running the Server
 
@@ -130,7 +232,9 @@ npm run dev
 ```
 
 ## Environment Variables
+
 **Ensure you have a `.env` file with the following variables:**
+
 ```
 DB_URL="your_mongodb_connection_string"
 USER_VERIFICATION_TOKEN_SECRET="your_verification_token_secret"
@@ -141,4 +245,5 @@ BASE_URL=https://petwell-api-wmaq4jxv4a-et.a.run.app
 ```
 
 ## Dependencies
+
 - **Refer to `package.json` for the full list of dependencies.**
