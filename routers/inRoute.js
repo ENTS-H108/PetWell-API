@@ -5,6 +5,8 @@ const UserController = require("../controllers/userController");
 const ArticleController = require("../controllers/articleController");
 const PetController = require("../controllers/petController");
 const DoctorController = require("../controllers/doctorController");
+const DiseasesController = require("../controllers/diseasesController");
+const { upload, detect } = require("../controllers/predictController");
 
 const validate = require("../middleware/validator");
 const validateRequest = require("../middleware/validateRequest");
@@ -63,5 +65,12 @@ router.post('/workhours', authenticateJWT, DoctorController.createWorkHour);
 router.get('/workhours/:id', authenticateJWT, DoctorController.getWorkHours);
 router.put('/workhours/:id', authenticateJWT, DoctorController.updateWorkHour);
 router.delete('/workhours/:id', authenticateJWT, DoctorController.deleteWorkHour);
+
+// router untuk diseases
+router.post("/predicts", validate.anKucValidator, validateRequest, DiseasesController.postSkinDiseasePredictionHandler);
+router.post("/dalamAnjing", DiseasesController.dalamAnjingController);
+router.post("/dalamKucing", DiseasesController.dalamKucingController);
+
+router.post("/disease", upload.single("file"), detect);
 
 module.exports = router;
