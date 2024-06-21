@@ -71,6 +71,6 @@ router.post("/predicts", validate.anKucValidator, validateRequest, DiseasesContr
 router.post("/dalamAnjing", DiseasesController.dalamAnjingController);
 router.post("/dalamKucing", DiseasesController.dalamKucingController);
 
-router.post("/disease", upload.single("file"), detect);
+router.post("/disease", upload.single("image"), detect);
 
 module.exports = router;
