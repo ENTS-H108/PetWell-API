@@ -1,0 +1,5 @@
+dermatitis
+fine
+flea_allergy
+ringworm
+scabies
