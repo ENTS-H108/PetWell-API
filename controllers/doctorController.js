@@ -270,8 +270,18 @@ exports.getAppointmentDetails = async (req, res) => {
         }
 
         const schedulesWithWorkHours = await Promise.all(schedules.map(async (schedule) => {
-            const workHours = await WorkHour.find({ scheduleId: schedule._id }).select("availSlot isAvail -_id");
-            return { date: schedule.date, workHours };
+            const workHours = await WorkHour.find({ scheduleId: schedule._id }).select("availSlot isAvail");
+            const workHoursWithId = workHours.map(workHour => ({
+                workHourId: workHour._id,
+                availSlot: workHour.availSlot,
+                isAvail: workHour.isAvail
+            }));
+
+            return {
+                scheduleId: schedule._id,
+                date: schedule.date,
+                workHours: workHoursWithId
+            };
         }));
 
         const response = {
