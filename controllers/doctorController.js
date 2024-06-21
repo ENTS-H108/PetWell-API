@@ -298,36 +298,36 @@ exports.getAppointmentDetails = async (req, res) => {
 
 exports.getAppointmentSummary = async (req, res) => {
     try {
-        const { doctorId, scheduleId, workHourId } = req.query;
+        const { workHourId } = req.query;
 
-        const { email, username } = req.user;
-
-        const doctor = await Doctor.findById(doctorId).select("name type price hospital").exec();
-        if (!doctor) {
-            return res.status(404).json({ message: "Dokter tidak ditemukan" });
-        }
-
-        const schedule = await Schedule.findById(scheduleId).select("date").exec();
-        if (!schedule) {
-            return res.status(404).json({ message: "Jadwal tidak ditemukan" });
-        }
-
-        const workHour = await WorkHour.findById(workHourId).select("availSlot isAvail").exec();
+        const workHour = await WorkHour.findById(workHourId).select("availSlot isAvail scheduleId").exec();
         if (!workHour) {
             return res.status(404).json({ message: "Jam kerja tidak ditemukan" });
         }
 
+        const schedule = await Schedule.findById(workHour.scheduleId).select("date doctorId").exec();
+        if (!schedule) {
+            return res.status(404).json({ message: "Jadwal tidak ditemukan" });
+        }
+
+        const doctor = await Doctor.findById(schedule.doctorId).select("name type price hospital profile experiences").exec();
+        if (!doctor) {
+            return res.status(404).json({ message: "Dokter tidak ditemukan" });
+        }
+
         const response = {
-            user: { email, username },
             doctor: {
                 _id: doctor._id,
                 name: doctor.name,
                 type: doctor.type,
+                profile: doctor.profile,
+                experiences: doctor.experiences,
                 price: doctor.price,
                 hospital: doctor.hospital
             },
             date: schedule.date,
-            time: {
+            workHour: {
+                workHourId: workHour._id,
                 availSlot: workHour.availSlot,
                 isAvail: workHour.isAvail
             }
