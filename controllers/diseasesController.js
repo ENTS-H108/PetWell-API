@@ -64,7 +64,7 @@ async function predictSkinDisease(model, inputArray) {
         suggestion = "Lakukan perawatan anti-kutu secara rutin dan bersihkan area tempat tinggal hewan.";
         explanation = "Alergi terhadap kutu terjadi karena gigitan kutu yang menyebabkan reaksi alergi pada kulit.";
         break;
-      case "ringworm":
+      case "Ringworm":
         suggestion = "Gunakan obat anti-jamur dan jaga kebersihan hewan serta lingkungannya.";
         explanation = "Ringworm adalah infeksi jamur yang dapat menyebabkan gatal, bercak kulit merah, dan kerontokan bulu pada hewan.";
         break;
@@ -185,7 +185,7 @@ async function predictInsideKucing(model, inputArray) {
 
 exports.postSkinDiseasePredictionHandler = async (req, res, next) => {
   try {
-    const { input } = req.body;
+    const input = req.body; // Directly using input values
     // Proceed to prediction and storing in Firestore
     const model = req.app.locals.models["AnjingDanKucing"];
     const { predictedDisease, suggestion, explanation } = await predictSkinDisease(model, input);
@@ -216,7 +216,7 @@ exports.postSkinDiseasePredictionHandler = async (req, res, next) => {
 
 exports.dalamAnjingController = async (req, res, next) => {
   try {
-    const { input } = req.body;
+    const input = req.body; // Directly using input values
     // Proceed to prediction and storing in Firestore
     const model = req.app.locals.models["DalamAnjing"];
     const { predictedDisease, suggestion, explanation } = await predictInsideAnjing(model, input);
@@ -247,7 +247,7 @@ exports.dalamAnjingController = async (req, res, next) => {
 
 exports.dalamKucingController = async (req, res, next) => {
   try {
-    const { input } = req.body;
+    const input = req.body; // Directly using input values
     // Proceed to prediction and storing in Firestore
     const model = req.app.locals.models["DalamKucing"];
     const { predictedDisease, suggestion, explanation } = await predictInsideKucing(model, input);
