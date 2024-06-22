@@ -39,7 +39,7 @@ class InputError extends ClientError {
 }
 
 async function storeData(id, imageData) {
-  const imageURL = `${process.env.BASE_URL}/static/uploads/${id}.jpg`; // URL for accessing the image
+  const imageURL = `${process.env.BASE_URL}/static/uploads/${id}.jpg`;
 
   const prediction = new Prediction({
     _id: id,
@@ -51,9 +51,9 @@ async function storeData(id, imageData) {
   return { imageURL };
 }
 
-async function sendImageToPython(imagePath) {
+async function sendImageToPython(imagePath, scriptName) {
   return new Promise((resolve, reject) => {
-    const scriptPath = path.join(__dirname, "../ai/main.py");
+    const scriptPath = path.join(__dirname, `../ai/${scriptName}`);
     const pythonProcess = spawn("python3", [scriptPath, imagePath]);
 
     let resultData = "";
@@ -80,7 +80,7 @@ async function sendImageToPython(imagePath) {
         try {
           const result = JSON.parse(resultData.trim());
           const resultImagePath = result.result_image_path;
-          const imageBuffer = fs.readFileSync(resultImagePath); // Read image file into buffer
+          const imageBuffer = fs.readFileSync(resultImagePath);
           resolve({ imageBuffer, detections: result.detections, resultImagePath });
         } catch (err) {
           reject(new Error("Failed to parse Python script output"));
@@ -96,7 +96,7 @@ const storage = multer.diskStorage({
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
-    cb(null, uploadPath); // Adjust the location for file uploads
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = `${Date.now()}-${file.originalname}`;
@@ -104,7 +104,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage: storage }).single('image');
 
 async function detect(req, res, next) {
   try {
@@ -112,15 +112,19 @@ async function detect(req, res, next) {
       throw new InputError("Image is required");
     }
 
+    const { scriptName } = req.body;
+    if (!scriptName || (scriptName !== "kucing.py" && scriptName !== "anjing.py")) {
+      throw new InputError("Valid script name (kucing.py or anjing.py) is required");
+    }
+
     const imagePath = req.file.path;
     const docId = path.basename(imagePath, path.extname(imagePath));
 
     let imageData;
     try {
-      imageData = await sendImageToPython(imagePath);
+      imageData = await sendImageToPython(imagePath, scriptName);
       console.log("Detections:", imageData.detections);
 
-      // Save the processed image to the static folder
       const newImagePath = path.join(__dirname, `../static/uploads/${docId}.jpg`);
       fs.writeFileSync(newImagePath, imageData.imageBuffer);
     } catch (error) {
@@ -130,10 +134,9 @@ async function detect(req, res, next) {
 
     try {
       const result = await storeData(docId, imageData);
-      const { imageURL } = result; // Destructure to get imageURL
+      const { imageURL } = result;
       console.log("Data stored in MongoDB with ID:", docId);
 
-      // Respond with the stored image URL
       res.status(200).json({
         message: "Image processed and data stored successfully",
         resultImagePath: imageURL,

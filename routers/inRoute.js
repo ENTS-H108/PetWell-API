@@ -67,10 +67,10 @@ router.put('/workhours/:id', authenticateJWT, DoctorController.updateWorkHour);
 router.delete('/workhours/:id', authenticateJWT, DoctorController.deleteWorkHour);
 
 // router untuk diseases
-router.post("/predicts", validate.anKucValidator, validateRequest, DiseasesController.postSkinDiseasePredictionHandler);
+router.post("/predicts",  DiseasesController.postSkinDiseasePredictionHandler);
 router.post("/dalamAnjing", DiseasesController.dalamAnjingController);
 router.post("/dalamKucing", DiseasesController.dalamKucingController);
 
-router.post("/disease", upload.single("image"), detect);
+router.post("/disease", upload, detect);
 
 module.exports = router;
